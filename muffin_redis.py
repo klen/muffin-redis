@@ -19,7 +19,7 @@ class Plugin(BasePlugin):
     defaults = {
         'db': 0,
         'fake': False,
-        'host': '127.0.0.2',
+        'host': '127.0.0.1',
         'password': None,
         'poolsize': 1,
         'port': 6379,
