@@ -5,7 +5,7 @@ import asyncio_redis
 from muffin.plugins import BasePlugin, PluginException
 
 
-__version__ = "0.0.1"
+__version__ = "0.0.2"
 __project__ = "muffin-redis"
 __author__ = "Kirill Klenov <horneds@gmail.com>"
 __license__ = "MIT"
@@ -19,7 +19,7 @@ class Plugin(BasePlugin):
     defaults = {
         'db': 0,
         'fake': False,
-        'host': '127.0.0.1',
+        'host': '127.0.0.2',
         'password': None,
         'poolsize': 1,
         'port': 6379,
