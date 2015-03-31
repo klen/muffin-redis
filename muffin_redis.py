@@ -85,6 +85,10 @@ try:
                 return coro
             return method
 
+        def close(self):
+            """ Do nothing. """
+            pass
+
     class FakeConnection(asyncio_redis.Connection):
 
         """ Fake Redis for tests. """

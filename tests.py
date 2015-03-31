@@ -6,16 +6,12 @@ import pytest
 
 @pytest.fixture(scope='session')
 def app(loop):
-    app = muffin.Application(
+    return muffin.Application(
         'redis', loop=loop,
 
         PLUGINS=['muffin_redis'],
         REDIS_FAKE=True,
     )
-
-    loop.run_until_complete(app.start())
-
-    return app
 
 
 def test_muffin_redis(loop, app):
