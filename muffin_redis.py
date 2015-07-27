@@ -31,32 +31,32 @@ class Plugin(BasePlugin):
         self.conn = None
 
     def setup(self, app):
-        """ Setup self options. """
+        """ Setup self. """
         super().setup(app)
-        self.options.port = int(self.options.port)
-        self.options.db = int(self.options.db)
-        self.options.poolsize = int(self.options.poolsize)
+        self.cfg.port = int(self.cfg.port)
+        self.cfg.db = int(self.cfg.db)
+        self.cfg.poolsize = int(self.cfg.poolsize)
 
     @asyncio.coroutine
     def start(self, app):
         """ Connect to Redis. """
-        if self.options.fake:
+        if self.cfg.fake:
             if not FakeConnection:
                 raise PluginException('Install fakeredis for fake connections.')
 
             self.conn = yield from FakeConnection.create()
 
-        elif self.options.poolsize == 1:
+        elif self.cfg.poolsize == 1:
             self.conn = yield from asyncio_redis.Connection.create(
-                host=self.options.host, port=self.options.port,
-                password=self.options.password, db=self.options.db,
+                host=self.cfg.host, port=self.cfg.port,
+                password=self.cfg.password, db=self.cfg.db,
             )
 
         else:
             self.conn = yield from asyncio_redis.Pool.create(
-                host=self.options.host, port=self.options.port,
-                password=self.options.password, db=self.options.db,
-                poolsize=self.options.poolsize,
+                host=self.cfg.host, port=self.cfg.port,
+                password=self.cfg.password, db=self.cfg.db,
+                poolsize=self.cfg.poolsize,
             )
 
     def finish(self, app):
