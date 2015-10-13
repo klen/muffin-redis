@@ -5,7 +5,7 @@ import asyncio_redis
 from muffin.plugins import BasePlugin, PluginException
 
 
-__version__ = "0.0.6"
+__version__ = "0.1.0"
 __project__ = "muffin-redis"
 __author__ = "Kirill Klenov <horneds@gmail.com>"
 __license__ = "MIT"
