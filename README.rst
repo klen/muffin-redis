@@ -3,7 +3,7 @@ Muffin-Redis
 
 .. _description:
 
-Muffin-Redis -- Short description.
+Muffin-Redis -- Redis support for Muffin framework.
 
 .. _badges:
 
@@ -21,15 +21,6 @@ Muffin-Redis -- Short description.
 .. image:: http://img.shields.io/pypi/dm/muffin-redis.svg?style=flat-square
     :target: https://pypi.python.org/pypi/muffin-redis
 
-.. image:: http://img.shields.io/gratipay/klen.svg?style=flat-square
-    :target: https://www.gratipay.com/klen/
-    :alt: Donate
-
-.. _documentation:
-
-**Docs are available at https://muffin-redis.readthedocs.org/. Pull requests
-with documentation enhancements and/or fixes are awesome and most welcome.**
-
 .. _contents:
 
 .. contents::
@@ -39,7 +30,7 @@ with documentation enhancements and/or fixes are awesome and most welcome.**
 Requirements
 =============
 
-- python >= 2.6
+- python >= 3.3
 
 .. _installation:
 
@@ -54,6 +45,37 @@ Installation
 
 Usage
 =====
+
+Add `muffin_redis` to `PLUGINS` in your Muffin Application configuration.
+
+Or install it manually like this: ::
+
+    redis = muffin_redis.Plugin(**{'options': 'here'})
+
+    app = muffin.Application('test')
+    app.install(redis)
+
+
+Appllication configuration options
+----------------------------------
+
+``REDIS_DB``       -- Number of Redis database (0)
+``REDIS_HOST``     -- Connection IP address ("127.0.0.1")
+``REDIS_PORT``     -- Connection port (6379)
+``REDIS_PASSWORD`` -- Connection password (None)
+``REDIS_POOLSIZE`` -- Connection pool size (1)
+``REDIS_FAKE``     -- Use fake redis instead real one for tests proposals (False)
+
+Queries
+-------
+
+::
+
+    @app.register
+    def view(request):
+        value = yield from app.redis.get('my_key')
+        return value
+
 
 .. _bugtracker:
 
@@ -83,6 +105,14 @@ License
 =======
 
 Licensed under a `MIT license`_.
+
+If you wish to express your appreciation for the project, you are welcome to send
+a postcard to: ::
+
+    Kirill Klenov
+    pos. Severny 8-3
+    MO, Istra, 143500
+    Russia
 
 .. _links:
 

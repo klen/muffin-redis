@@ -1,2 +1,2 @@
-muffin          >= 0.0.99
-asyncio_redis
+muffin          >= 0.2.0
+asyncio_redis   >= 0.14.1

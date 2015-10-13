@@ -1,4 +1,4 @@
-""" Support redis in Muffin framework. """
+"""Redis support for Muffin framework."""
 
 import asyncio
 import asyncio_redis
@@ -13,7 +13,7 @@ __license__ = "MIT"
 
 class Plugin(BasePlugin):
 
-    """ Connect to Redis. """
+    """Manage Redis connection."""
 
     name = 'redis'
     defaults = {
@@ -26,12 +26,12 @@ class Plugin(BasePlugin):
     }
 
     def __init__(self, *args, **kwargs):
-        """ Initialize the Plugin. """
+        """Initialize the plugin."""
         super().__init__(*args, **kwargs)
         self.conn = None
 
     def setup(self, app):
-        """ Setup self. """
+        """Setup the plugin."""
         super().setup(app)
         self.cfg.port = int(self.cfg.port)
         self.cfg.db = int(self.cfg.db)
@@ -39,7 +39,7 @@ class Plugin(BasePlugin):
 
     @asyncio.coroutine
     def start(self, app):
-        """ Connect to Redis. """
+        """Connect to Redis."""
         if self.cfg.fake:
             if not FakeConnection:
                 raise PluginException('Install fakeredis for fake connections.')
@@ -60,11 +60,11 @@ class Plugin(BasePlugin):
             )
 
     def finish(self, app):
-        """ Close self connections. """
+        """Close self connections."""
         self.conn.close()
 
     def __getattr__(self, name):
-        """ Proxy attribute to self connection. """
+        """Proxy attribute to self connection."""
         return getattr(self.conn, name)
 
 
@@ -73,10 +73,10 @@ try:
 
     class FakeRedis(fakeredis.FakeRedis):
 
-        """ Fake connection for tests. """
+        """Fake connection for tests."""
 
         def __getattribute__(self, name):
-            """ Make a coroutine. """
+            """Make a coroutine."""
             method = super().__getattribute__(name)
             if not name.startswith('_'):
                 @asyncio.coroutine
@@ -86,17 +86,17 @@ try:
             return method
 
         def close(self):
-            """ Do nothing. """
+            """Do nothing."""
             pass
 
     class FakeConnection(asyncio_redis.Connection):
 
-        """ Fake Redis for tests. """
+        """Fake Redis for tests."""
 
         @classmethod
         @asyncio.coroutine
         def create(cls, *args, **kwargs):
-            """ Create a fake connection. """
+            """Create a fake connection."""
             return FakeRedis()
 
 except ImportError:
