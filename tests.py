@@ -1,5 +1,3 @@
-import asyncio
-
 import muffin
 import pytest
 
@@ -14,19 +12,11 @@ def app(loop):
     )
 
 
-def test_muffin_redis(loop, app):
+@pytest.mark.async
+def test_muffin_redis(app):  # noqa
     assert app.ps.redis
     assert app.ps.redis.conn
 
-    @asyncio.coroutine
-    def test():
-        yield from app.ps.redis.set('key', 'value')
-
-    loop.run_until_complete(test())
-
-    @asyncio.coroutine
-    def test():
-        return (yield from app.ps.redis.get('key'))
-
-    result = loop.run_until_complete(test())
+    yield from app.ps.redis.set('key', 'value')
+    result = yield from app.ps.redis.get('key')
     assert result == b'value'

@@ -89,6 +89,16 @@ try:
             """Do nothing."""
             pass
 
+        @asyncio.coroutine
+        def multi(self):
+            """Do nothing."""
+            return self
+
+        @asyncio.coroutine
+        def exec(self):
+            """Do nothing."""
+            return self
+
     class FakeConnection(asyncio_redis.Connection):
 
         """Fake Redis for tests."""
