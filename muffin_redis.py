@@ -21,6 +21,7 @@ class Plugin(BasePlugin):
         'db': 0,
         'fake': False,
         'host': '127.0.0.1',
+        'timeout': 10,
         'jsonpickle': True,
         'password': None,
         'poolsize': 1,
@@ -49,17 +50,23 @@ class Plugin(BasePlugin):
             self.conn = yield from FakeConnection.create()
 
         elif self.cfg.poolsize == 1:
-            self.conn = yield from asyncio_redis.Connection.create(
-                host=self.cfg.host, port=self.cfg.port,
-                password=self.cfg.password, db=self.cfg.db,
-            )
+            try:
+                self.conn = yield from asyncio.wait_for(asyncio_redis.Connection.create(
+                                host=self.cfg.host, port=self.cfg.port,
+                                password=self.cfg.password, db=self.cfg.db,
+                            ), self.cfg.timeout)
+            except asyncio.TimeoutError:
+                raise PluginException('Muffin-redis connection timeout.')
 
         else:
-            self.conn = yield from asyncio_redis.Pool.create(
-                host=self.cfg.host, port=self.cfg.port,
-                password=self.cfg.password, db=self.cfg.db,
-                poolsize=self.cfg.poolsize,
-            )
+            try:
+                self.conn = yield from asyncio.wait_for(asyncio_redis.Pool.create(
+                    host=self.cfg.host, port=self.cfg.port,
+                    password=self.cfg.password, db=self.cfg.db,
+                    poolsize=self.cfg.poolsize,
+                ), self.cfg.timeout)
+            except asyncio.TimeoutError:
+                raise PluginException('Muffin-redis connection timeout.')
 
     def finish(self, app):
         """Close self connections."""
