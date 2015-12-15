@@ -1,5 +1,6 @@
 import muffin
 import pytest
+import datetime
 
 
 @pytest.fixture(scope='session')
@@ -19,4 +20,12 @@ def test_muffin_redis(app):  # noqa
 
     yield from app.ps.redis.set('key', 'value')
     result = yield from app.ps.redis.get('key')
-    assert result == b'value'
+    assert result == 'value'
+
+    now = datetime.datetime.now()
+    yield from app.ps.redis.set('dict', {
+        'now': datetime.datetime.now()
+    })
+    result = yield from app.ps.redis.get('dict')
+    assert result and 'now' in result and isinstance(result['now'], datetime.datetime)
+

@@ -1,6 +1,7 @@
 """Redis support for Muffin framework."""
 
 import asyncio
+import jsonpickle
 import asyncio_redis
 from muffin.plugins import BasePlugin, PluginException
 
@@ -20,6 +21,7 @@ class Plugin(BasePlugin):
         'db': 0,
         'fake': False,
         'host': '127.0.0.1',
+        'jsonpickle': True,
         'password': None,
         'poolsize': 1,
         'port': 6379,
@@ -62,6 +64,23 @@ class Plugin(BasePlugin):
     def finish(self, app):
         """Close self connections."""
         self.conn.close()
+
+    @asyncio.coroutine
+    def set(self, key, value, **params):
+        """Encode the value."""
+        if self.cfg.jsonpickle:
+            value = jsonpickle.encode(value)
+        return (yield from self.conn.set(key, value, **params))
+
+    @asyncio.coroutine
+    def get(self, key):
+        """Decode the value."""
+        value = yield from self.conn.get(key)
+        if self.cfg.jsonpickle:
+            if not isinstance(value, str):
+                return jsonpickle.decode(value.decode('utf-8'))
+            return jsonpickle.decode(value)
+        return value
 
     def __getattr__(self, name):
         """Proxy attribute to self connection."""
