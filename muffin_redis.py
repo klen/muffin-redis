@@ -66,11 +66,11 @@ class Plugin(BasePlugin):
         self.conn.close()
 
     @asyncio.coroutine
-    def set(self, key, value, **params):
+    def set(self, key, value, *args, **kwargs):
         """Encode the value."""
         if self.cfg.jsonpickle:
             value = jsonpickle.encode(value)
-        return (yield from self.conn.set(key, value, **params))
+        return (yield from self.conn.set(key, value, *args, **kwargs))
 
     @asyncio.coroutine
     def get(self, key):
