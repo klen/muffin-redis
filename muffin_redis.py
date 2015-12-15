@@ -77,9 +77,10 @@ class Plugin(BasePlugin):
         """Decode the value."""
         value = yield from self.conn.get(key)
         if self.cfg.jsonpickle:
-            if not isinstance(value, str):
+            if isinstance(value, bytes):
                 return jsonpickle.decode(value.decode('utf-8'))
-            return jsonpickle.decode(value)
+            if isinstance(value, str):
+                return jsonpickle.decode(value)
         return value
 
     def __getattr__(self, name):
