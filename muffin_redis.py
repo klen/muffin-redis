@@ -90,9 +90,51 @@ class Plugin(BasePlugin):
                 return jsonpickle.decode(value)
         return value
 
+    @asyncio.coroutine
+    def publish(self, channel, message):
+        if self.cfg.jsonpickle:
+            message = jsonpickle.encode(message)
+        return (yield from self.conn.publish(channel, message))
+
+    @asyncio.coroutine
+    def start_subscribe(self, *args):
+        subscription = (yield from self.conn.start_subscribe(*args))
+        return Subscription(self, subscription)
+
     def __getattr__(self, name):
         """Proxy attribute to self connection."""
         return getattr(self.conn, name)
+
+class Subscription():
+    """
+    This class is a proxy for asyncio_redis Subscription.
+    It serves two purposes:
+        1. It unpickles all received messages if needed;
+        2. It implements `async iterator` interface to be used with `async for`.
+    """
+    def __init__(self, plugin, sub):
+        self._plugin = plugin
+        self._sub = sub
+    @asyncio.coroutine
+    def next_published(self):
+        msg = (yield from self._sub.next_published())
+        if self._plugin.cfg.jsonpickle:
+            # We overwrite 'hidden' field `_value` on the message received.
+            # Hackish way, I know. How can we do it better? XXX
+            if isinstance(msg.value, bytes):
+                msg._value = jsonpickle.decode(msg.value.decode('utf-8'))
+            if isinstance(msg._value, str):
+                msg._value = jsonpickle.decode(ret.value)
+        return ret
+    @asyncio.coroutine
+    def __aiter__(self):
+        return self
+    @asyncio.coroutine
+    def __anext__(self):
+        return (yield from self.next_published())
+    def __getattr__(self, attr):
+        # proxy all remaining methods/fields
+        return getattr(self._sub, attr)
 
 
 try:
