@@ -45,10 +45,13 @@ def test_muffin_redis(app):  # noqa
     assert result and result.value == 'Hello world'
 
     # another way: iterator style
-    async for result in subscriber:
-        value = result.value
-        assert value and 'now' in value and isinstance(value['now'], datetime.datetime)
-        break
+    #async for result in subscriber:
+    #    value = result.value
+    #    assert value and 'now' in value and isinstance(value['now'], datetime.datetime)
+    #    break
+    # -- but this test requires python 3.5, so for now use simplified syntax
+    result = yield from subscriber.__anext__()
+    assert value and 'now' in value and isinstance(value['now'], datetime.datetime)
 
     yield from subscriber.unsubscribe()
     result = yield from app.ps.redis.conn.pubsub_channels()
