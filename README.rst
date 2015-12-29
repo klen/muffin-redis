@@ -79,7 +79,7 @@ Queries
 Pub/Sub
 -------
 
-Sending is done like this:
+Publishing messages is as simple as this:
 
 ::
 
@@ -120,6 +120,9 @@ so in Python 3.5+ that can be spelled in lighter way:
     # no need to close connection explicitly
     # as it will be done automatically by context manager.
 
+It might be not very good to create separate Redis connection per each subscription manager
+(e.g. per each websocket), so that could be improved by managing subscribed channel masks
+and reusing the same single "pubsub-specific" redis connection.
 
 .. _bugtracker:
 
