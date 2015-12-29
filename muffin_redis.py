@@ -124,8 +124,8 @@ class Subscription():
             if isinstance(msg.value, bytes):
                 msg._value = jsonpickle.decode(msg.value.decode('utf-8'))
             if isinstance(msg._value, str):
-                msg._value = jsonpickle.decode(ret.value)
-        return ret
+                msg._value = jsonpickle.decode(msg.value)
+        return msg
     @asyncio.coroutine
     def __aiter__(self):
         return self
