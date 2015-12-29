@@ -73,7 +73,7 @@ Queries
 
     @app.register
     def view(request):
-        value = yield from app.redis.get('my_key')
+        value = yield from app.ps.redis.get('my_key')
         return value
 
 
