@@ -65,7 +65,6 @@ Appllication configuration options
 ``REDIS_PASSWORD`` -- Connection password (None)
 ``REDIS_POOLSIZE`` -- Connection pool size (1)
 ``REDIS_FAKE``     -- Use fake redis instead real one for tests proposals (False)
-``REDIS_PUBSUB``   -- Enable PubSub subscription - this will create one separate connection for that purpose (True)
 
 Queries
 -------

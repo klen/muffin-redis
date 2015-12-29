@@ -26,7 +26,6 @@ class Plugin(BasePlugin):
         'password': None,
         'poolsize': 1,
         'port': 6379,
-        'pubsub': True,
     }
 
     def __init__(self, *args, **kwargs):
@@ -51,7 +50,6 @@ class Plugin(BasePlugin):
                 raise PluginException('Install fakeredis for fake connections.')
 
             self.conn = yield from FakeConnection.create()
-            self.pubsub_conn = yield from FakeConnection.create()
 
         else:
             try:
@@ -66,14 +64,6 @@ class Plugin(BasePlugin):
                         password=self.cfg.password, db=self.cfg.db,
                         poolsize=self.cfg.poolsize,
                     ), self.cfg.timeout)
-                if self.cfg.pubsub:
-                    # for pubsub we always use only one connection
-                    self.pubsub_conn = yield from asyncio.wait_for(
-                        asyncio_redis.Connection.create(
-                            host=self.cfg.host, port=self.cfg.port,
-                            password=self.cfg.password, db=self.cfg.db,
-                        ), self.cfg.timeout
-                    )
             except asyncio.TimeoutError:
                 raise PluginException('Muffin-redis connection timeout.')
 
@@ -107,11 +97,8 @@ class Plugin(BasePlugin):
 
     @asyncio.coroutine
     def start_subscribe(self, *args):
-        if not self.cfg.pubsub:
-            raise PluginException('PubSub disabled in plugin config.')
-        if not self._subscription:
-            self._subscription = (yield from self.pubsub_conn.start_subscribe(*args))
-        return Subscription(self, self._subscription)
+        subscription = (yield from self.pubsub_conn.start_subscribe(*args))
+        return Subscription(self, subscription)
 
     def __getattr__(self, name):
         """Proxy attribute to self connection."""
@@ -121,9 +108,8 @@ class Subscription():
     """
     This class is a proxy for asyncio_redis Subscription.
     It serves two purposes:
-        1. Manages subscriptions for different clients
-        2. It unpickles all received messages if needed;
-        3. It implements `async iterator` interface to be used with `async for`.
+        1. It unpickles all received messages if needed;
+        2. It implements `async iterator` interface to be used with `async for`.
     """
     def __init__(self, plugin, sub):
         self._plugin = plugin
