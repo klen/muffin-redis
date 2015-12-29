@@ -97,8 +97,8 @@ class Plugin(BasePlugin):
 
     @asyncio.coroutine
     def start_subscribe(self, *args):
-        subscription = (yield from self.pubsub_conn.start_subscribe(*args))
-        return Subscription(self, subscription)
+        # create separate connection
+        return Subscription(self)
 
     def __getattr__(self, name):
         """Proxy attribute to self connection."""
@@ -108,15 +108,48 @@ class Subscription():
     """
     This class is a proxy for asyncio_redis Subscription.
     It serves two purposes:
-        1. It unpickles all received messages if needed;
-        2. It implements `async iterator` interface to be used with `async for`.
+        1. Creates and handles separate connection for subscription
+        2. Unpickles all received messages if needed;
+        3. Implements `async iterator` interface to be used with `async for`.
     """
-    def __init__(self, plugin, sub):
+    def __init__(self, plugin):
         self._plugin = plugin
-        self._sub = sub
-        self._channels = [] # channels to which this instance is subscribed
+        self._conn = None
+        self._sub = None
+    @asyncio.coroutine
+    def open(self):
+        """
+        Create connection, after which it is possible to subscribe.
+        Returns self for convenience.
+        """
+        cfg = self._plugin.cfg
+        self._conn = yield from asyncio.wait_for(
+            asyncio_redis.Connection.create(
+                host=cfg.host, port=cfg.port,
+                password=cfg.password, db=cfg.db,
+            ), cfg.timeout
+        )
+        self._sub = (yield from self._conn.start_subscribe(*args))
+        return self
+    __aenter__ = open # alias
+    @asyncio.coroutine
+    def close(self):
+        """
+        Close connection which was used for subscriptions
+        and free its resources.
+        """
+        if not self._conn:
+            raise ValueError('Was not connected')
+        yield from self._conn.close()
+    def __aexit__(self, exc_type, exc, tb):
+        # this is not a coroutine but it returns a coroutine object
+        return self.close()
+
     @asyncio.coroutine
     def next_published(self):
+        if not self._sub:
+            raise ValueError('Not connected')
+
         msg = (yield from self._sub.next_published())
         if self._plugin.cfg.jsonpickle:
             # We overwrite 'hidden' field `_value` on the message received.
@@ -129,9 +162,10 @@ class Subscription():
     @asyncio.coroutine
     def __aiter__(self):
         return self
-    @asyncio.coroutine
     def __anext__(self):
-        return (yield from self.next_published())
+        # behaves like a coroutine
+        return self.next_published()
+
     def __getattr__(self, attr):
         # proxy all remaining methods/fields
         return getattr(self._sub, attr)
