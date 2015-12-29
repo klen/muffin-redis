@@ -95,9 +95,8 @@ class Plugin(BasePlugin):
             message = jsonpickle.encode(message)
         return (yield from self.conn.publish(channel, message))
 
-    @asyncio.coroutine
-    def start_subscribe(self, *args):
-        # create separate connection
+    def start_subscribe(self):
+        # creates a context manager
         return Subscription(self)
 
     def __getattr__(self, name):
@@ -129,7 +128,7 @@ class Subscription():
                 password=cfg.password, db=cfg.db,
             ), cfg.timeout
         )
-        self._sub = (yield from self._conn.start_subscribe(*args))
+        self._sub = (yield from self._conn.start_subscribe())
         return self
     __aenter__ = open # alias
     @asyncio.coroutine
