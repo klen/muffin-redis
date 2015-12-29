@@ -34,6 +34,7 @@ class Plugin(BasePlugin):
         super().__init__(*args, **kwargs)
         self.conn = None
         self.pubsub_conn = None
+        self._subscription = None
 
     def setup(self, app):
         """Setup the plugin."""
@@ -108,8 +109,9 @@ class Plugin(BasePlugin):
     def start_subscribe(self, *args):
         if not self.cfg.pubsub:
             raise PluginException('PubSub disabled in plugin config.')
-        subscription = (yield from self.pubsub_conn.start_subscribe(*args))
-        return Subscription(self, subscription)
+        if not self._subscription:
+            self._subscription = (yield from self.pubsub_conn.start_subscribe(*args))
+        return Subscription(self, self._subscription)
 
     def __getattr__(self, name):
         """Proxy attribute to self connection."""
@@ -119,12 +121,14 @@ class Subscription():
     """
     This class is a proxy for asyncio_redis Subscription.
     It serves two purposes:
-        1. It unpickles all received messages if needed;
-        2. It implements `async iterator` interface to be used with `async for`.
+        1. Manages subscriptions for different clients
+        2. It unpickles all received messages if needed;
+        3. It implements `async iterator` interface to be used with `async for`.
     """
     def __init__(self, plugin, sub):
         self._plugin = plugin
         self._sub = sub
+        self._channels = [] # channels to which this instance is subscribed
     @asyncio.coroutine
     def next_published(self):
         msg = (yield from self._sub.next_published())
