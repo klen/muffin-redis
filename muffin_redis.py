@@ -141,9 +141,10 @@ class Subscription():
         if not self._conn:
             raise ValueError('Was not connected')
         yield from self._conn.close()
+    @asyncio.coroutine
     def __aexit__(self, exc_type, exc, tb):
-        # this is not a coroutine but it returns a coroutine object
-        return self.close()
+        yield from self.close()
+        return None # reraise exception, if any
 
     @asyncio.coroutine
     def next_published(self):
