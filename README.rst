@@ -93,6 +93,7 @@ Then you open a separate connection within that manager,
 after which you can subscribe and listen for messages:
 
 ::
+
     sub = app.ps.redis.start_subscribe()
     yield from sub.open() # this creates separate connection to redis
     # sub.open() returns that manager itself, so this can be written like this:
@@ -112,6 +113,7 @@ Subscription manager also implements PEP 0492 `async with` and `async for` inter
 so in Python 3.5+ that can be spelled in lighter way:
 
 ::
+
     async with app.ps.redis.start_subscribe() as sub:
         sub.subscribe(['channel1'])
         sub.psubscribe(['channel.a.*', 'channel.b.*']) # you can use masks as well
