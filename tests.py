@@ -33,8 +33,7 @@ def test_muffin_redis(app):  # noqa
 
     # fakeredis seems to not support pub/sub, so disabling these test for now
     if False:
-        subscriber = yield from app.ps.redis.start_subscribe()
-        yield from subscriber.open()
+        subscriber = yield from app.ps.redis.start_subscribe().open()
         yield from subscriber.subscribe(['channel'])
         channels = yield from app.ps.redis.conn.pubsub_channels()
         assert 'channel' in channels
