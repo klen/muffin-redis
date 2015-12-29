@@ -139,7 +139,7 @@ class Subscription():
         """
         if not self._conn:
             raise ValueError('Was not connected')
-        yield from self._conn.close()
+        self._conn.close()
     @asyncio.coroutine
     def __aexit__(self, exc_type, exc, tb):
         yield from self.close()
