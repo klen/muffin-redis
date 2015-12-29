@@ -26,6 +26,7 @@ class Plugin(BasePlugin):
         'password': None,
         'poolsize': 1,
         'port': 6379,
+        'pubsub': True,
     }
 
     def __init__(self, *args, **kwargs):
@@ -64,13 +65,14 @@ class Plugin(BasePlugin):
                         password=self.cfg.password, db=self.cfg.db,
                         poolsize=self.cfg.poolsize,
                     ), self.cfg.timeout)
-                # for pubsub we always use only one connection
-                self.pubsub_conn = yield from asyncio.wait_for(
-                    asyncio_redis.Connection.create(
-                        host=self.cfg.host, port=self.cfg.port,
-                        password=self.cfg.password, db=self.cfg.db,
-                    ), self.cfg.timeout
-                )
+                if self.cfg.pubsub:
+                    # for pubsub we always use only one connection
+                    self.pubsub_conn = yield from asyncio.wait_for(
+                        asyncio_redis.Connection.create(
+                            host=self.cfg.host, port=self.cfg.port,
+                            password=self.cfg.password, db=self.cfg.db,
+                        ), self.cfg.timeout
+                    )
             except asyncio.TimeoutError:
                 raise PluginException('Muffin-redis connection timeout.')
 
@@ -104,6 +106,8 @@ class Plugin(BasePlugin):
 
     @asyncio.coroutine
     def start_subscribe(self, *args):
+        if not self.cfg.pubsub:
+            raise PluginException('PubSub disabled in plugin config.')
         subscription = (yield from self.pubsub_conn.start_subscribe(*args))
         return Subscription(self, subscription)
 
