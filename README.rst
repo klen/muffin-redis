@@ -76,6 +76,50 @@ Queries
         value = yield from app.ps.redis.get('my_key')
         return value
 
+Pub/Sub
+-------
+
+Sending is done like this:
+
+::
+
+    @app.register
+    def view(request):
+        yield from app.ps.redis.publish('channel', 'message')
+
+Receiving is more complex.
+In order to start receiving messages from pubsub, you should create a subscription manager.
+Then you open a separate connection within that manager,
+after which you can subscribe and listen for messages:
+
+::
+    sub = app.ps.redis.start_subscribe()
+    yield from sub.open() # this creates separate connection to redis
+    # sub.open() returns that manager itself, so this can be written like this:
+    # sub = yield from app.ps.redis.start_subscribe().open()
+    sub.subscribe(['channel1'])
+    sub.psubscribe(['channel.a.*', 'channel.b.*']) # you can use masks as well
+    # now wait for new messages
+    while True:
+        msg = yield from sub.next_published()
+        print('got message', msg)
+        print('the message itself:', msg.value)
+        if shall_stop:
+            break
+    yield from sub.close() # don't forget to close connection!
+
+Subscription manager also implements PEP 0492 `async with` and `async for` interfaces,
+so in Python 3.5+ that can be spelled in lighter way:
+
+::
+    async with app.ps.redis.start_subscribe() as sub:
+        sub.subscribe(['channel1'])
+        sub.psubscribe(['channel.a.*', 'channel.b.*']) # you can use masks as well
+        async for msg in sub:
+            print('got message', msg)
+    # no need to close connection explicitly
+    # as it will be done automatically by context manager.
+
 
 .. _bugtracker:
 
