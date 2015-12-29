@@ -32,6 +32,7 @@ class Plugin(BasePlugin):
         """Initialize the plugin."""
         super().__init__(*args, **kwargs)
         self.conn = None
+        self.pubsub_conn = None
 
     def setup(self, app):
         """Setup the plugin."""
@@ -48,6 +49,7 @@ class Plugin(BasePlugin):
                 raise PluginException('Install fakeredis for fake connections.')
 
             self.conn = yield from FakeConnection.create()
+            self.pubsub_conn = yield from FakeConnection.create()
 
         else:
             try:
@@ -62,6 +64,13 @@ class Plugin(BasePlugin):
                         password=self.cfg.password, db=self.cfg.db,
                         poolsize=self.cfg.poolsize,
                     ), self.cfg.timeout)
+                # for pubsub we always use only one connection
+                self.pubsub_conn = yield from asyncio.wait_for(
+                    asyncio_redis.Connection.create(
+                        host=self.cfg.host, port=self.cfg.port,
+                        password=self.cfg.password, db=self.cfg.db,
+                    ), self.cfg.timeout
+                )
             except asyncio.TimeoutError:
                 raise PluginException('Muffin-redis connection timeout.')
 
@@ -95,7 +104,7 @@ class Plugin(BasePlugin):
 
     @asyncio.coroutine
     def start_subscribe(self, *args):
-        subscription = (yield from self.conn.start_subscribe(*args))
+        subscription = (yield from self.pubsub_conn.start_subscribe(*args))
         return Subscription(self, subscription)
 
     def __getattr__(self, name):
