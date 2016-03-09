@@ -35,6 +35,9 @@ class Plugin(BasePlugin):
         self.pubsub_conn = None
         # this is a mapping from channels to subscription objects
         self._subscriptions = {}
+        # will be assigned to the subscription instance
+        # which is currently listening for new pubsub events from redis
+        self._receiving = None
 
     def setup(self, app):
         """Setup the plugin."""
@@ -119,9 +122,9 @@ class Subscription():
     """
     def __init__(self, plugin):
         self._plugin = plugin
-        self._conn = None
         self._sub = None
         self._channels = []
+        self._queue = asyncio.Queue()
 
     @asyncio.coroutine
     def open(self):
@@ -139,7 +142,6 @@ class Subscription():
             )
             self._plugin.pubsub_subscription = \
                 yield from self._plugin.pubsub_conn.start_subscribe()
-        self._conn = self._plugin.pubsub_conn
         self._sub = self._plugin.pubsub_subscription
         return self
 
@@ -212,22 +214,47 @@ class Subscription():
         if not self._sub:
             raise ValueError('Not connected')
 
-        msg = (yield from self._sub.next_published())
-        if self._plugin.cfg.jsonpickle:
-            # We overwrite 'hidden' field `_value` on the message received.
-            # Hackish way, I know. How can we do it better? XXX
-            if isinstance(msg.value, bytes):
-                msg._value = jsonpickle.decode(msg.value.decode('utf-8'))
-            if isinstance(msg._value, str):
-                msg._value = jsonpickle.decode(msg.value)
-        return msg
+        if self._plugin._receiving:
+            # someone other is already handling messages,
+            # so leave all work to him
+            return (yield from self._queue.get())
+
+        self._plugin._receiving = self
+        while True:
+            # first check if we already have some message
+            # (it may be left from previous call
+            # if message matched several rules)
+            if not self._queue.empty():
+                self._plugin._receiving = None
+                return self._queue.get_nowait()
+
+            # receive and unpickle next message
+            msg = (yield from self._sub.next_published())
+            if self._plugin.cfg.jsonpickle:
+                # We overwrite 'hidden' field `_value` on the message received.
+                # Hackish way, I know. How can we do it better? XXX
+                if isinstance(msg.value, bytes):
+                    msg._value = jsonpickle.decode(msg.value.decode('utf-8'))
+                if isinstance(msg._value, str):
+                    msg._value = jsonpickle.decode(msg.value)
+
+            # notify all receivers for that message (including self, if any)
+            for receiver in self._plugin._subscriptions.get(
+                (msg.channel, False), []
+            ):
+                yield from receiver._queue.put(msg)
+            for receiver in self._plugin._subscriptions.get(
+                (msg.pattern, True), []
+            ):
+                yield from receiver._queue.put(msg)
+
     @asyncio.coroutine
     def __aiter__(self):
         return self
+
     def __anext__(self):
         # behaves like a coroutine
         return self.next_published()
-
 
 
 try:
