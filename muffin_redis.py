@@ -167,10 +167,10 @@ class Subscription():
             key = channel, is_mask
             self._channels.append(key)
             if key in self._plugin._subscriptions:
+                self._plugin._subscriptions[key].append(self)
+            else:
                 self._plugin._subscriptions[key] = [self]
                 news.append(channel)
-            else:
-                self._plugin._subscriptions[key].append(self)
         if news:
             yield from getattr(
                 self._sub,
