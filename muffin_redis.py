@@ -33,7 +33,8 @@ class Plugin(BasePlugin):
         super().__init__(*args, **kwargs)
         self.conn = None
         self.pubsub_conn = None
-        self._subscription = None
+        # this is a mapping from channels to subscription objects
+        self._subscriptions = {}
 
     def setup(self, app):
         """Setup the plugin."""
@@ -70,6 +71,8 @@ class Plugin(BasePlugin):
     def finish(self, app):
         """Close self connections."""
         self.conn.close()
+        if self.pubsub_conn:
+            self.pubsub_conn.close()
 
     @asyncio.coroutine
     def set(self, key, value, *args, **kwargs):
@@ -96,7 +99,7 @@ class Plugin(BasePlugin):
         return (yield from self.conn.publish(channel, message))
 
     def start_subscribe(self):
-        # creates a context manager
+        # creates a new context manager
         return Subscription(self)
 
     def __getattr__(self, name):
@@ -105,9 +108,12 @@ class Plugin(BasePlugin):
 
 class Subscription():
     """
-    This class is a proxy for asyncio_redis Subscription.
-    It serves two purposes:
-        1. Creates and handles separate connection for subscription
+    This class is not just a proxy for asyncio_redis Subscription:
+    while asyncio_redis can have only one Subscription at a time,
+    we want to support multiple Subscription objects.
+
+    This class serves the following purposes:
+        1. Proxies commands/messages to/from dedicated subscription connection;
         2. Unpickles all received messages if needed;
         3. Implements `async iterator` interface to be used with `async for`.
     """
@@ -115,6 +121,8 @@ class Subscription():
         self._plugin = plugin
         self._conn = None
         self._sub = None
+        self._channels = []
+
     @asyncio.coroutine
     def open(self):
         """
@@ -122,28 +130,82 @@ class Subscription():
         Returns self for convenience.
         """
         cfg = self._plugin.cfg
-        self._conn = yield from asyncio.wait_for(
-            asyncio_redis.Connection.create(
-                host=cfg.host, port=cfg.port,
-                password=cfg.password, db=cfg.db,
-            ), cfg.timeout
-        )
-        self._sub = (yield from self._conn.start_subscribe())
+        if not self._plugin.pubsub_conn:
+            self._plugin.pubsub_conn = yield from asyncio.wait_for(
+                asyncio_redis.Connection.create(
+                    host=cfg.host, port=cfg.port,
+                    password=cfg.password, db=cfg.db,
+                ), cfg.timeout
+            )
+            self._plugin.pubsub_subscription = \
+                yield from self._plugin.pubsub_conn.start_subscribe()
+        self._conn = self._plugin.pubsub_conn
+        self._sub = self._plugin.pubsub_subscription
         return self
-    __aenter__ = open # alias
+
+    __aenter__ = open  # alias
+
     @asyncio.coroutine
     def close(self):
         """
-        Close connection which was used for subscriptions
-        and free its resources.
+        Unsubscribe from all channels used by this object
         """
-        if not self._conn:
-            raise ValueError('Was not connected')
-        self._conn.close()
+        yield from self.unsubscribe(self._channels)
+        yield from self.unsubscribe(self._pchannels)
+
     @asyncio.coroutine
     def __aexit__(self, exc_type, exc, tb):
         yield from self.close()
-        return None # reraise exception, if any
+        return None  # will reraise exception, if any
+
+    @asyncio.coroutine
+    def _subscribe(self, channels, is_mask):
+        news = []
+        for channel in channels:
+            key = channel, is_mask
+            self._channels.append(key)
+            if key in self._plugin._subscriptions:
+                self._plugin._subscriptions[key] = [self]
+                news.append(channel)
+            else:
+                self._plugin._subscriptions[key].append(self)
+        if news:
+            yield from getattr(
+                self._sub,
+                'psubscribe' if is_mask else 'subscribe',
+            )(news)
+
+    @asyncio.coroutine
+    def _unsubscribe(self, channels, is_mask):
+        vanished = []
+        for channel in channels:
+            key = channel, is_mask
+            self._channels.remove(key)
+            self._plugin._subscriptions[key].remove(self)
+            if not self._plugin._subscriptions[key]:  # we were last sub?
+                vanished.append(channel)
+                del self._plugin._subscriptions[key]
+        if vanished:
+            yield from getattr(
+                self._sub,
+                'punsubscribe' if is_mask else 'unsubscribe',
+            )(vanished)
+
+    @asyncio.coroutine
+    def subscribe(self, channels):
+        return self._subscribe(channels, False)
+
+    @asyncio.coroutine
+    def psubscribe(self, channels):
+        return self._subscribe(channels, True)
+
+    @asyncio.coroutine
+    def unsubscribe(self, channels):
+        return self._unsubscribe(channels, False)
+
+    @asyncio.coroutine
+    def punsubscribe(self, channels):
+        return self._punsubscribe(channels, True)
 
     @asyncio.coroutine
     def next_published(self):
@@ -166,9 +228,6 @@ class Subscription():
         # behaves like a coroutine
         return self.next_published()
 
-    def __getattr__(self, attr):
-        # proxy all remaining methods/fields
-        return getattr(self._sub, attr)
 
 
 try:
