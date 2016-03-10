@@ -26,6 +26,7 @@ class Plugin(BasePlugin):
         'password': None,
         'poolsize': 1,
         'port': 6379,
+        'pubsub': True,
     }
 
     def __init__(self, *args, **kwargs):
@@ -68,6 +69,15 @@ class Plugin(BasePlugin):
                         password=self.cfg.password, db=self.cfg.db,
                         poolsize=self.cfg.poolsize,
                     ), self.cfg.timeout)
+                if self.cfg.pubsub:
+                    self.pubsub_conn = yield from asyncio.wait_for(
+                        asyncio_redis.Connection.create(
+                            host=self.cfg.host, port=self.cfg.port,
+                            password=self.cfg.password, db=self.cfg.db,
+                        ), self.cfg.timeout
+                    )
+                    self.pubsub_subscription = \
+                        yield from self.pubsub_conn.start_subscribe()
             except asyncio.TimeoutError:
                 raise PluginException('Muffin-redis connection timeout.')
 
@@ -102,6 +112,11 @@ class Plugin(BasePlugin):
         return (yield from self.conn.publish(channel, message))
 
     def start_subscribe(self):
+        if not self.conn:
+            raise ValueError('Not connected')
+        elif not self.pubsub_conn:
+            raise ValueError('PubSub not enabled')
+
         # creates a new context manager
         return Subscription(self)
 
@@ -122,27 +137,16 @@ class Subscription():
     """
     def __init__(self, plugin):
         self._plugin = plugin
-        self._sub = None
+        self._sub = plugin.pubsub_subscription
         self._channels = []
         self._queue = asyncio.Queue()
 
     @asyncio.coroutine
     def open(self):
         """
-        Create connection, after which it is possible to subscribe.
-        Returns self for convenience.
+        Does nothing (because connection was established during initialization).
+        Returns self for convenience and for compatibility with __aenter__.
         """
-        cfg = self._plugin.cfg
-        if not self._plugin.pubsub_conn:
-            self._plugin.pubsub_conn = yield from asyncio.wait_for(
-                asyncio_redis.Connection.create(
-                    host=cfg.host, port=cfg.port,
-                    password=cfg.password, db=cfg.db,
-                ), cfg.timeout
-            )
-            self._plugin.pubsub_subscription = \
-                yield from self._plugin.pubsub_conn.start_subscribe()
-        self._sub = self._plugin.pubsub_subscription
         return self
 
     __aenter__ = open  # alias
