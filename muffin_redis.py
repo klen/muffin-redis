@@ -1,5 +1,6 @@
 """Redis support for Muffin framework."""
 
+import warnings
 import asyncio
 import jsonpickle
 import asyncio_redis
@@ -158,6 +159,22 @@ class Subscription():
         """
         yield from self.unsubscribe(self._channels)
         yield from self.unsubscribe(self._pchannels)
+
+    def __del__(self):
+        """
+        Ensure that we unsubscribed from all channels
+        and warn user if not.
+        """
+        if self._channels:
+            warnings.warn(
+                'Subscription is destroyed '
+                'but was not unsubscribed from some channels: ' +
+                ', '.join(c for c, m in self._channels),
+                RuntimeWarning,
+            )
+            # do our best to fix this problem
+            for chan, is_mask in self._channels:
+                self._plugin._subscriptions[chan, is_mask].remove(self)
 
     @asyncio.coroutine
     def __aexit__(self, exc_type, exc, tb):
