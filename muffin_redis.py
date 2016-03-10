@@ -172,9 +172,10 @@ class Subscription():
                 ', '.join(c for c, m in self._channels),
                 RuntimeWarning,
             )
-            # do our best to fix this problem
+            # do our best to fix this
             for chan, is_mask in self._channels:
-                self._plugin._subscriptions[chan, is_mask].remove(self)
+                self._plugin._subscriptions[chan, is_mask].remove(self._queue)
+            # Note: redis connection is still subscribed to events!
 
     @asyncio.coroutine
     def __aexit__(self, exc_type, exc, tb):
@@ -188,9 +189,9 @@ class Subscription():
             key = channel, is_mask
             self._channels.append(key)
             if key in self._plugin._subscriptions:
-                self._plugin._subscriptions[key].append(self)
+                self._plugin._subscriptions[key].append(self._queue)
             else:
-                self._plugin._subscriptions[key] = [self]
+                self._plugin._subscriptions[key] = [self._queue]
                 news.append(channel)
         if news:
             yield from getattr(
@@ -204,7 +205,7 @@ class Subscription():
         for channel in channels:
             key = channel, is_mask
             self._channels.remove(key)
-            self._plugin._subscriptions[key].remove(self)
+            self._plugin._subscriptions[key].remove(self._queue)
             if not self._plugin._subscriptions[key]:  # we were last sub?
                 vanished.append(channel)
                 del self._plugin._subscriptions[key]
@@ -263,11 +264,11 @@ class Subscription():
             for receiver in self._plugin._subscriptions.get(
                 (msg.channel, False), []
             ):
-                yield from receiver._queue.put(msg)
+                yield from receiver.put(msg)
             for receiver in self._plugin._subscriptions.get(
                 (msg.pattern, True), []
             ):
-                yield from receiver._queue.put(msg)
+                yield from receiver.put(msg)
 
     @asyncio.coroutine
     def __aiter__(self):
