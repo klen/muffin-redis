@@ -229,11 +229,11 @@ class Subscription():
     @asyncio.coroutine
     def punsubscribe(self, channels):
         """Unsubscribe from given channel's masks."""
-        return self._punsubscribe(channels, True)
+        return self._unsubscribe(channels, True)
 
     @asyncio.coroutine
     def next_published(self):
-        """Ger a message from subscribed channels."""
+        """Get a message from subscribed channels."""
         if not self._sub:
             raise ValueError('Not connected')
 
