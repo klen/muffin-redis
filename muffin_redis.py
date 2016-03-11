@@ -22,12 +22,12 @@ class Plugin(BasePlugin):
         'db': 0,
         'fake': False,
         'host': '127.0.0.1',
-        'timeout': 10,
         'jsonpickle': True,
         'password': None,
         'poolsize': 1,
         'port': 6379,
-        'pubsub': True,
+        'pubsub': False,
+        'timeout': 10,
     }
 
     def __init__(self, *args, **kwargs):

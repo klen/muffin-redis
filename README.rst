@@ -79,6 +79,8 @@ Queries
 Pub/Sub
 -------
 
+You need to have enabled `REDIS_PUBSUB = True` in your configuration for this functionality.
+
 Publishing messages is as simple as this:
 
 ::
