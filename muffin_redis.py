@@ -162,8 +162,8 @@ class Subscription():
     @asyncio.coroutine
     def close(self):
         """Unsubscribe from all channels used by this object."""
-        yield from self.unsubscribe(self._channels)
-        yield from self.unsubscribe(self._pchannels)
+        yield from self.unsubscribe(c for c, m in self._channels if not m)
+        yield from self.punsubscribe(c for c, m in self._channels if m)
 
     def __del__(self):
         """Ensure that we unsubscribed from all channels and warn user if not."""
