@@ -35,6 +35,7 @@ class Plugin(BasePlugin):
         super().__init__(*args, **kwargs)
         self.conn = None
         self.pubsub_conn = None
+        self.pubsub_subscription = None
         # this is a mapping from channels to subscription objects
         self._subscriptions = {}
         # will be assigned to the subscription instance
@@ -59,11 +60,12 @@ class Plugin(BasePlugin):
 
         else:
             try:
-                if self.cfg.poolsize == 1:
-                    self.conn = yield from asyncio.wait_for(asyncio_redis.Connection.create(
-                                    host=self.cfg.host, port=self.cfg.port,
-                                    password=self.cfg.password, db=self.cfg.db,
-                                ), self.cfg.timeout)
+                if self.cfg.poolsize <= 1:
+                    self.conn = yield from asyncio.wait_for(
+                        asyncio_redis.Connection.create(
+                            host=self.cfg.host, port=self.cfg.port,
+                            password=self.cfg.password, db=self.cfg.db,
+                        ), self.cfg.timeout)
                 else:
                     self.conn = yield from asyncio.wait_for(asyncio_redis.Pool.create(
                         host=self.cfg.host, port=self.cfg.port,
@@ -108,11 +110,13 @@ class Plugin(BasePlugin):
 
     @asyncio.coroutine
     def publish(self, channel, message):
+        """Publish message to channel."""
         if self.cfg.jsonpickle:
             message = jsonpickle.encode(message)
         return (yield from self.conn.publish(channel, message))
 
     def start_subscribe(self):
+        """Create a new Subscription context manager."""
         if not self.conn:
             raise ValueError('Not connected')
         elif not self.pubsub_conn:
@@ -125,8 +129,11 @@ class Plugin(BasePlugin):
         """Proxy attribute to self connection."""
         return getattr(self.conn, name)
 
+
 class Subscription():
-    """
+
+    """Implement Subscription Context Manager.
+
     This class is not just a proxy for asyncio_redis Subscription:
     while asyncio_redis can have only one Subscription at a time,
     we want to support multiple Subscription objects.
@@ -136,7 +143,9 @@ class Subscription():
         2. Unpickles all received messages if needed;
         3. Implements `async iterator` interface to be used with `async for`.
     """
+
     def __init__(self, plugin):
+        """Initialize self."""
         self._plugin = plugin
         self._sub = plugin.pubsub_subscription
         self._channels = []
@@ -144,27 +153,20 @@ class Subscription():
 
     @asyncio.coroutine
     def open(self):
-        """
-        Does nothing (because connection was established during initialization).
+        """Do nothing (because connection was established during initialization).
+
         Returns self for convenience and for compatibility with __aenter__.
         """
         return self
 
-    __aenter__ = open  # alias
-
     @asyncio.coroutine
     def close(self):
-        """
-        Unsubscribe from all channels used by this object
-        """
+        """Unsubscribe from all channels used by this object."""
         yield from self.unsubscribe(self._channels)
         yield from self.unsubscribe(self._pchannels)
 
     def __del__(self):
-        """
-        Ensure that we unsubscribed from all channels
-        and warn user if not.
-        """
+        """Ensure that we unsubscribed from all channels and warn user if not."""
         if self._channels:
             warnings.warn(
                 'Subscription is destroyed '
@@ -178,12 +180,8 @@ class Subscription():
             # Note: redis connection is still subscribed to events!
 
     @asyncio.coroutine
-    def __aexit__(self, exc_type, exc, tb):
-        yield from self.close()
-        return None  # will reraise exception, if any
-
-    @asyncio.coroutine
     def _subscribe(self, channels, is_mask):
+        """Subscribe to given channel."""
         news = []
         for channel in channels:
             key = channel, is_mask
@@ -194,13 +192,11 @@ class Subscription():
                 self._plugin._subscriptions[key] = [self._queue]
                 news.append(channel)
         if news:
-            yield from getattr(
-                self._sub,
-                'psubscribe' if is_mask else 'subscribe',
-            )(news)
+            yield from getattr(self._sub, 'psubscribe' if is_mask else 'subscribe')(news)
 
     @asyncio.coroutine
     def _unsubscribe(self, channels, is_mask):
+        """Unsubscribe from given channel."""
         vanished = []
         for channel in channels:
             key = channel, is_mask
@@ -217,22 +213,27 @@ class Subscription():
 
     @asyncio.coroutine
     def subscribe(self, channels):
+        """Subscribe to given channels."""
         return self._subscribe(channels, False)
 
     @asyncio.coroutine
     def psubscribe(self, channels):
+        """Subscribe to given channel's masks."""
         return self._subscribe(channels, True)
 
     @asyncio.coroutine
     def unsubscribe(self, channels):
+        """Unsubscribe from given channels."""
         return self._unsubscribe(channels, False)
 
     @asyncio.coroutine
     def punsubscribe(self, channels):
+        """Unsubscribe from given channel's masks."""
         return self._punsubscribe(channels, True)
 
     @asyncio.coroutine
     def next_published(self):
+        """Ger a message from subscribed channels."""
         if not self._sub:
             raise ValueError('Not connected')
 
@@ -261,20 +262,27 @@ class Subscription():
                     msg._value = jsonpickle.decode(msg.value)
 
             # notify all receivers for that message (including self, if any)
-            for receiver in self._plugin._subscriptions.get(
-                (msg.channel, False), []
-            ):
+            for receiver in self._plugin._subscriptions.get((msg.channel, False), []):
                 yield from receiver.put(msg)
-            for receiver in self._plugin._subscriptions.get(
-                (msg.pattern, True), []
-            ):
+
+            for receiver in self._plugin._subscriptions.get((msg.pattern, True), []):
                 yield from receiver.put(msg)
+
+    __aenter__ = open  # alias
+
+    @asyncio.coroutine
+    def __aexit__(self, exc_type, exc, tb):
+        """Exit from context manager."""
+        yield from self.close()
+        return None  # will reraise exception, if any
 
     @asyncio.coroutine
     def __aiter__(self):
+        """Support async."""
         return self
 
     def __anext__(self):
+        """Iterate self."""
         # behaves like a coroutine
         return self.next_published()
 
