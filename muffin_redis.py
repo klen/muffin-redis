@@ -84,11 +84,16 @@ class Plugin(BasePlugin):
             except asyncio.TimeoutError:
                 raise PluginException('Muffin-redis connection timeout.')
 
+    @asyncio.coroutine
     def finish(self, app):
         """Close self connections."""
         self.conn.close()
         if self.pubsub_conn:
             self.pubsub_conn.close()
+        # give connections a chance to actually terminate
+        # TODO: use better method once it will be added,
+        # see https://github.com/jonathanslenders/asyncio-redis/issues/56
+        yield  # or: yield from asyncio.sleep(0)
 
     @asyncio.coroutine
     def set(self, key, value, *args, **kwargs):
