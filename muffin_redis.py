@@ -162,8 +162,8 @@ class Subscription():
     @asyncio.coroutine
     def close(self):
         """Unsubscribe from all channels used by this object."""
-        yield from self.unsubscribe(self._channels)
-        yield from self.unsubscribe(self._pchannels)
+        yield from self.unsubscribe(c for c, m in self._channels if not m)
+        yield from self.punsubscribe(c for c, m in self._channels if m)
 
     def __del__(self):
         """Ensure that we unsubscribed from all channels and warn user if not."""
@@ -229,11 +229,11 @@ class Subscription():
     @asyncio.coroutine
     def punsubscribe(self, channels):
         """Unsubscribe from given channel's masks."""
-        return self._punsubscribe(channels, True)
+        return self._unsubscribe(channels, True)
 
     @asyncio.coroutine
     def next_published(self):
-        """Ger a message from subscribed channels."""
+        """Get a message from subscribed channels."""
         if not self._sub:
             raise ValueError('Not connected')
 
