@@ -247,31 +247,33 @@ class Subscription():
             # so leave all work to him
             return (yield from self._queue.get())
 
-        self._plugin._receiving = self
-        while True:
-            # first check if we already have some message
-            # (it may be left from previous call
-            # if message matched several rules)
-            if not self._queue.empty():
-                self._plugin._receiving = None
-                return self._queue.get_nowait()
+        try:
+            self._plugin._receiving = self
+            while True:
+                # first check if we already have some message
+                # (it may be left from previous call
+                # if message matched several rules)
+                if not self._queue.empty():
+                    return self._queue.get_nowait()
 
-            # receive and unpickle next message
-            msg = (yield from self._sub.next_published())
-            if self._plugin.cfg.jsonpickle:
-                # We overwrite 'hidden' field `_value` on the message received.
-                # Hackish way, I know. How can we do it better? XXX
-                if isinstance(msg.value, bytes):
-                    msg._value = jsonpickle.decode(msg.value.decode('utf-8'))
-                if isinstance(msg._value, str):
-                    msg._value = jsonpickle.decode(msg.value)
+                # receive and unpickle next message
+                msg = (yield from self._sub.next_published())
+                if self._plugin.cfg.jsonpickle:
+                    # We overwrite 'hidden' field `_value` on the message received.
+                    # Hackish way, I know. How can we do it better? XXX
+                    if isinstance(msg.value, bytes):
+                        msg._value = jsonpickle.decode(msg.value.decode('utf-8'))
+                    if isinstance(msg._value, str):
+                        msg._value = jsonpickle.decode(msg.value)
 
-            # notify all receivers for that message (including self, if any)
-            for receiver in self._plugin._subscriptions.get((msg.channel, False), []):
-                yield from receiver.put(msg)
+                # notify all receivers for that message (including self, if any)
+                for receiver in self._plugin._subscriptions.get((msg.channel, False), []):
+                    yield from receiver.put(msg)
 
-            for receiver in self._plugin._subscriptions.get((msg.pattern, True), []):
-                yield from receiver.put(msg)
+                for receiver in self._plugin._subscriptions.get((msg.pattern, True), []):
+                    yield from receiver.put(msg)
+        finally:
+            self._plugin._receiving = None
 
     __aenter__ = open  # alias
 
