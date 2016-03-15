@@ -38,9 +38,6 @@ class Plugin(BasePlugin):
         self.pubsub_subscription = None
         # this is a mapping from channels to subscription objects
         self._subscriptions = {}
-        # will be assigned to the subscription instance
-        # which is currently listening for new pubsub events from redis
-        self._receiving = None
 
     def setup(self, app):
         """Setup the plugin."""
@@ -81,6 +78,8 @@ class Plugin(BasePlugin):
                     )
                     self.pubsub_subscription = \
                         yield from self.pubsub_conn.start_subscribe()
+                    self.pubsub_reader = asyncio.ensure_future(
+                        self._pubsub_reader_proc())
             except asyncio.TimeoutError:
                 raise PluginException('Muffin-redis connection timeout.')
 
@@ -89,6 +88,7 @@ class Plugin(BasePlugin):
         """Close self connections."""
         self.conn.close()
         if self.pubsub_conn:
+            self.pubsub_reader.cancel()
             self.pubsub_conn.close()
         # give connections a chance to actually terminate
         # TODO: use better method once it will be added,
@@ -129,6 +129,33 @@ class Plugin(BasePlugin):
 
         # creates a new context manager
         return Subscription(self)
+
+    @asyncio.coroutine
+    def _pubsub_reader_proc(self):
+        while True:
+            try:
+                # receive and unpickle next message
+                msg = (yield from self.pubsub_subscription.next_published())
+                if self.cfg.jsonpickle:
+                    # We overwrite 'hidden' field `_value` on the message received.
+                    # Hackish way, I know. How can we do it better? XXX
+                    if isinstance(msg.value, bytes):
+                        msg._value = jsonpickle.decode(msg.value.decode('utf-8'))
+                    if isinstance(msg._value, str):
+                        msg._value = jsonpickle.decode(msg.value)
+
+                # notify all receivers for that message (including self, if any)
+                for receiver in self._subscriptions.get((msg.channel, False), []):
+                    yield from receiver.put(msg)
+
+                for receiver in self._subscriptions.get((msg.pattern, True), []):
+                    yield from receiver.put(msg)
+            except asyncio.CancelledError:
+                raise
+            except Exception:
+                self.app.logger.exception('Pubsub reading failure')
+                # and continue working
+            # TODO: maybe we need special handling for other exceptions?
 
     def __getattr__(self, name):
         """Proxy attribute to self connection."""
@@ -242,38 +269,13 @@ class Subscription():
         if not self._sub:
             raise ValueError('Not connected')
 
-        if self._plugin._receiving:
-            # someone other is already handling messages,
-            # so leave all work to him
-            return (yield from self._queue.get())
+        # we could check if we are subscribed to anything,
+        # but let's leave it for user to decide:
+        # user may want to first start listening in one task
+        # and only after that subscribe from another task
 
-        try:
-            self._plugin._receiving = self
-            while True:
-                # first check if we already have some message
-                # (it may be left from previous call
-                # if message matched several rules)
-                if not self._queue.empty():
-                    return self._queue.get_nowait()
-
-                # receive and unpickle next message
-                msg = (yield from self._sub.next_published())
-                if self._plugin.cfg.jsonpickle:
-                    # We overwrite 'hidden' field `_value` on the message received.
-                    # Hackish way, I know. How can we do it better? XXX
-                    if isinstance(msg.value, bytes):
-                        msg._value = jsonpickle.decode(msg.value.decode('utf-8'))
-                    if isinstance(msg._value, str):
-                        msg._value = jsonpickle.decode(msg.value)
-
-                # notify all receivers for that message (including self, if any)
-                for receiver in self._plugin._subscriptions.get((msg.channel, False), []):
-                    yield from receiver.put(msg)
-
-                for receiver in self._plugin._subscriptions.get((msg.pattern, True), []):
-                    yield from receiver.put(msg)
-        finally:
-            self._plugin._receiving = None
+        # just wait for plugin._pubsub_reader_proc to feed us
+        return (yield from self._queue.get())
 
     __aenter__ = open  # alias
 
