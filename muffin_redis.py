@@ -343,8 +343,13 @@ try:
     class FakePubSub(fakeredis.FakePubSub):
         def __getattribute__(self, name):
             """Make a coroutine."""
+            import inspect
             method = super().__getattribute__(name)
-            if not name.startswith('_') and not asyncio.iscoroutine(method):
+            if not inspect.isfunction(method):
+                return method
+            if method.startswith('_'):
+                return method
+            if not inspect.iscoroutinefunction(method):
                 @asyncio.coroutine
                 def coro(*args, **kwargs):
                     return method(*args, **kwargs)
