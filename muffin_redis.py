@@ -6,6 +6,11 @@ import jsonpickle
 import asyncio_redis
 from muffin.plugins import BasePlugin, PluginException
 
+try:
+    from asyncio import ensure_future
+except ImportError:
+    ensure_future = asyncio.async
+
 
 __version__ = "1.1.1"
 __project__ = "muffin-redis"
@@ -84,8 +89,8 @@ class Plugin(BasePlugin):
         if self.cfg.pubsub:
             self.pubsub_subscription = \
                 yield from self.pubsub_conn.start_subscribe()
-            self.pubsub_reader = asyncio.ensure_future(
-                self._pubsub_reader_proc())
+            self.pubsub_reader = ensure_future(
+                self._pubsub_reader_proc(), loop=self.app.loop)
 
     @asyncio.coroutine
     def finish(self, app):
