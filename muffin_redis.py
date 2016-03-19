@@ -390,7 +390,7 @@ try:
                 if message:
                     # convert from fakeredis format to asyncio_redis one
                     return asyncio_redis.replies.PubSubReply(
-                        channel=message['channel'],
+                        channel=message['channel'].decode(),
                         value=message['data'],
                         pattern=message['pattern'],
                     )
