@@ -54,6 +54,8 @@ class Plugin(BasePlugin):
                 raise PluginException('Install fakeredis for fake connections.')
 
             self.conn = yield from FakeConnection.create()
+            if self.cfg.pubsub:
+                self.pubsub_conn = yield from FakeConnection.create()
 
         else:
             try:
@@ -76,12 +78,14 @@ class Plugin(BasePlugin):
                             password=self.cfg.password, db=self.cfg.db,
                         ), self.cfg.timeout
                     )
-                    self.pubsub_subscription = \
-                        yield from self.pubsub_conn.start_subscribe()
-                    self.pubsub_reader = asyncio.ensure_future(
-                        self._pubsub_reader_proc())
             except asyncio.TimeoutError:
                 raise PluginException('Muffin-redis connection timeout.')
+
+        if self.cfg.pubsub:
+            self.pubsub_subscription = \
+                yield from self.pubsub_conn.start_subscribe()
+            self.pubsub_reader = asyncio.ensure_future(
+                self._pubsub_reader_proc())
 
     @asyncio.coroutine
     def finish(self, app):
