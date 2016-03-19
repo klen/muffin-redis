@@ -331,6 +331,32 @@ try:
             """Do nothing."""
             return self
 
+        def start_subscribe(self):
+            # rewrote using our class
+            fps = FakePubSub()
+            self._pubsubs.append(fps)
+            return fps
+
+    class FakePubSub(fakeredis.FakePubSub):
+        def __getattribute__(self, name):
+            """Make a coroutine."""
+            method = super().__getattribute__(name)
+            if not name.startswith('_') and not asyncio.iscoroutine(method):
+                @asyncio.coroutine
+                def coro(*args, **kwargs):
+                    return method(*args, **kwargs)
+                return coro
+            return method
+
+        @asyncio.coroutine
+        def next_published(self):
+            # rewrote `listen` as a coro
+            while self.subscribed:
+                message = self.get_message()
+                if message:
+                    return message
+                asyncio.sleep(0.1)
+
     class FakeConnection(asyncio_redis.Connection):
 
         """Fake Redis for tests."""
