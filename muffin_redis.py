@@ -237,13 +237,21 @@ class Subscription():
     def _unsubscribe(self, channels, is_mask):
         """Unsubscribe from given channel."""
         vanished = []
-        for channel in channels:
-            key = channel, is_mask
-            self._channels.remove(key)
-            self._plugin._subscriptions[key].remove(self._queue)
-            if not self._plugin._subscriptions[key]:  # we were last sub?
-                vanished.append(channel)
-                del self._plugin._subscriptions[key]
+        if channels:
+            for channel in channels:
+                key = channel, is_mask
+                self._channels.remove(key)
+                self._plugin._subscriptions[key].remove(self._queue)
+                if not self._plugin._subscriptions[key]:  # we were last sub?
+                    vanished.append(channel)
+                    del self._plugin._subscriptions[key]
+        else:
+            while self._channels:
+                channel, is_mask = key = self._channels.pop()
+                self._plugin._subscriptions[key].remove(self._queue)
+                if not self._plugin._subscriptions[key]:
+                    vanished.append(channel)
+                    del self._plugin._subscriptions[key]
         if vanished:
             yield from getattr(
                 self._sub,
@@ -261,12 +269,12 @@ class Subscription():
         return self._subscribe(channels, True)
 
     @asyncio.coroutine
-    def unsubscribe(self, channels):
+    def unsubscribe(self, channels=None):
         """Unsubscribe from given channels."""
         return self._unsubscribe(channels, False)
 
     @asyncio.coroutine
-    def punsubscribe(self, channels):
+    def punsubscribe(self, channels=None):
         """Unsubscribe from given channel's masks."""
         return self._unsubscribe(channels, True)
 
