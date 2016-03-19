@@ -159,6 +159,9 @@ class Plugin(BasePlugin):
             except Exception:
                 self.app.logger.exception('Pubsub reading failure')
                 # and continue working
+                # unless we are testing
+                if self.cfg.fake:
+                    raise
             # TODO: maybe we need special handling for other exceptions?
 
     def __getattr__(self, name):
