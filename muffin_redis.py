@@ -356,7 +356,7 @@ try:
             # rewrote `listen` as a coro
             # but do not respect `self.subscribed`
             while True:
-                message = self.get_message()
+                message = super().get_message()
                 if message:
                     return message
                 asyncio.sleep(0.1)
