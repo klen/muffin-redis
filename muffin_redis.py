@@ -387,7 +387,7 @@ try:
             # but do not respect `self.subscribed`
             while True:
                 message = super().get_message()
-                if message:
+                if message and 'message' in message['type']:
                     # convert from fakeredis format to asyncio_redis one
                     return asyncio_redis.replies.PubSubReply(
                         channel=message['channel'].decode(),
