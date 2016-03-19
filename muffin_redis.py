@@ -55,7 +55,7 @@ class Plugin(BasePlugin):
 
             self.conn = yield from FakeConnection.create()
             if self.cfg.pubsub:
-                self.pubsub_conn = yield from FakeConnection.create()
+                self.pubsub_conn = self.conn
 
         else:
             try:
