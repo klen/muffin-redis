@@ -55,7 +55,7 @@ def test_muffin_redis_pubsub(app):
     #    break
     # -- but this test requires python 3.5, so for now use older syntax
     result = yield from subscriber.__anext__()
-    assert value and 'now' in value and isinstance(value['now'], datetime.datetime)
+    assert result and 'now' in result and isinstance(result['now'], datetime.datetime)
 
     yield from subscriber.unsubscribe()
     result = yield from app.ps.redis.conn.pubsub_channels()
