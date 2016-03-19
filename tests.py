@@ -37,11 +37,11 @@ def test_muffin_redis(app):  # noqa
 def test_muffin_redis_pubsub(app):
     subscriber = yield from app.ps.redis.start_subscribe().open()
     yield from subscriber.subscribe(['channel'])
-    channels = yield from app.ps.redis.conn.pubsub_channels()
+    channels = yield from app.ps.redis.pubsub_conn.pubsub_channels()
     assert 'channel' in channels
 
-    yield from app.ps.publish('channel', 'Hello world')
-    yield from app.ps.publish('channel', {
+    yield from app.ps.redis.publish('channel', 'Hello world')
+    yield from app.ps.redis.publish('channel', {
         'now': datetime.datetime.now(),
     })
 
