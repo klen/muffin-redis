@@ -388,7 +388,12 @@ try:
             while True:
                 message = super().get_message()
                 if message:
-                    return message
+                    # convert from fakeredis format to asyncio_redis one
+                    return asyncio_redis.replies.PubSubReply(
+                        channel=message['channel'],
+                        value=message['data'],
+                        pattern=message['pattern'],
+                    )
                 yield from asyncio.sleep(.1)
 
     class FakeConnection(asyncio_redis.Connection):
