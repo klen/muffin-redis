@@ -359,7 +359,7 @@ try:
                 message = super().get_message()
                 if message:
                     return message
-                asyncio.sleep(1)
+                yield from asyncio.sleep(.1)
 
     class FakeConnection(asyncio_redis.Connection):
 
