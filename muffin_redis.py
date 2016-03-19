@@ -356,6 +356,23 @@ try:
                 return coro
             return method
 
+        # convert API for subscribe methods
+        @asyncio.coroutine
+        def subscribe(self, chl):
+            return super().subscribe(*chl)
+
+        @asyncio.coroutine
+        def psubscribe(self, chl):
+            return super().psubscribe(*chl)
+
+        @asyncio.coroutine
+        def unsubscribe(self, chl):
+            return super().unsubscribe(*chl)
+
+        @asyncio.coroutine
+        def punsubscribe(self, chl):
+            return super().punsubscribe(*chl)
+
         @asyncio.coroutine
         def next_published(self):
             # rewrote `listen` as a coro
