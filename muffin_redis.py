@@ -144,7 +144,7 @@ class Plugin(BasePlugin):
                     # We overwrite 'hidden' field `_value` on the message received.
                     # Hackish way, I know. How can we do it better? XXX
                     if isinstance(msg.value, bytes):
-                        msg._value = jsonpickle.decode(msg.value.decode('utf-8'))
+                        msg._value = msg.value.decode('utf-8')
                     if isinstance(msg._value, str):
                         msg._value = jsonpickle.decode(msg.value)
 
