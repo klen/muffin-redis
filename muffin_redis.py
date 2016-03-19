@@ -354,7 +354,8 @@ try:
         @asyncio.coroutine
         def next_published(self):
             # rewrote `listen` as a coro
-            while self.subscribed:
+            # but do not respect `self.subscribed`
+            while True:
                 message = self.get_message()
                 if message:
                     return message
