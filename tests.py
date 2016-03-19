@@ -31,32 +31,33 @@ def test_muffin_redis(app):  # noqa
     result = yield from app.ps.redis.get('unknown')
     assert result is None
 
-    # fakeredis seems to not support pub/sub, so disabling these test for now
-    if False:
-        subscriber = yield from app.ps.redis.start_subscribe().open()
-        yield from subscriber.subscribe(['channel'])
-        channels = yield from app.ps.redis.conn.pubsub_channels()
-        assert 'channel' in channels
 
-        yield from app.ps.publish('channel', 'Hello world')
-        yield from app.ps.publish('channel', {
-            'now': datetime.datetime.now(),
-        })
+@pytest.mark.async
+def test_muffin_redis_pubsub(app):
+    subscriber = yield from app.ps.redis.start_subscribe().open()
+    yield from subscriber.subscribe(['channel'])
+    channels = yield from app.ps.redis.conn.pubsub_channels()
+    assert 'channel' in channels
 
-        result = yield from subscriber.next_published()
-        assert result and result.value == 'Hello world'
+    yield from app.ps.publish('channel', 'Hello world')
+    yield from app.ps.publish('channel', {
+        'now': datetime.datetime.now(),
+    })
 
-        # another way: iterator style
-        #async for result in subscriber:
-        #    value = result.value
-        #    assert value and 'now' in value and isinstance(value['now'], datetime.datetime)
-        #    break
-        # -- but this test requires python 3.5, so for now use simplified syntax
-        result = yield from subscriber.__anext__()
-        assert value and 'now' in value and isinstance(value['now'], datetime.datetime)
+    result = yield from subscriber.next_published()
+    assert result and result.value == 'Hello world'
 
-        yield from subscriber.unsubscribe()
-        result = yield from app.ps.redis.conn.pubsub_channels()
-        assert 'channel' not in result
+    # another way: iterator style
+    #async for result in subscriber:
+    #    value = result.value
+    #    assert value and 'now' in value and isinstance(value['now'], datetime.datetime)
+    #    break
+    # -- but this test requires python 3.5, so for now use older syntax
+    result = yield from subscriber.__anext__()
+    assert value and 'now' in value and isinstance(value['now'], datetime.datetime)
 
-        yield from subscriber.close()
+    yield from subscriber.unsubscribe()
+    result = yield from app.ps.redis.conn.pubsub_channels()
+    assert 'channel' not in result
+
+    yield from subscriber.close()
