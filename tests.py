@@ -57,7 +57,7 @@ def test_muffin_redis_pubsub(app):
     result = yield from subscriber.__anext__()
     assert result and 'now' in result.value and isinstance(result.value['now'], datetime.datetime)
 
-    yield from subscriber.unsubscribe()
+    yield from subscriber.unsubscribe(['channel'])
     result = yield from app.ps.redis.conn.pubsub_channels()
     assert 'channel' not in result
 
