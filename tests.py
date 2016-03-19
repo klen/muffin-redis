@@ -10,6 +10,7 @@ def app(loop):
 
         PLUGINS=['muffin_redis'],
         REDIS_FAKE=True,
+        REDIS_PUBSUB=True,
     )
 
 
