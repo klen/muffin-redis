@@ -340,6 +340,14 @@ try:
             self._pubsubs.append(fps)
             return fps
 
+        @asyncio.coroutine
+        def pubsub_channels(self):
+            channels = set()
+            for ps in self._pubsubs:
+                for channel in ps.channels:
+                    channels.add(channel)
+            return list(channels)
+
     class FakePubSub(fakeredis.FakePubSub):
         def __getattribute__(self, name):
             """Make a coroutine."""
