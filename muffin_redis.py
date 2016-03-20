@@ -318,6 +318,8 @@ class Subscription():
 
 try:
     import fakeredis
+    from fakeredis import FakePubSub as _  # noqa
+    # this is to ensure that fakeredis installed is new enough
 
     class FakeRedis(fakeredis.FakeRedis):
 
