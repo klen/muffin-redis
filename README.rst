@@ -117,8 +117,8 @@ so in Python 3.5+ that can be spelled in lighter way:
 ::
 
     async with app.ps.redis.start_subscribe() as sub:
-        sub.subscribe(['channel1'])
-        sub.psubscribe(['channel.a.*', 'channel.b.*']) # you can use masks as well
+        await sub.subscribe(['channel1'])
+        await sub.psubscribe(['channel.a.*', 'channel.b.*']) # you can use masks as well
         async for msg in sub:
             print('got message', msg)
     # no need to close connection explicitly
