@@ -41,6 +41,7 @@ class Plugin(BasePlugin):
         self.conn = None
         self.pubsub_conn = None
         self.pubsub_subscription = None
+        self.pubsub_reader = None
         # this is a mapping from channels to subscription objects
         self._subscriptions = {}
 
@@ -87,10 +88,9 @@ class Plugin(BasePlugin):
                 raise PluginException('Muffin-redis connection timeout.')
 
         if self.cfg.pubsub:
-            self.pubsub_subscription = \
-                yield from self.pubsub_conn.start_subscribe()
-            self.pubsub_reader = ensure_future(
-                self._pubsub_reader_proc(), loop=self.app.loop)
+            self.pubsub_subscription = yield from self.pubsub_conn.start_subscribe()
+
+            self.pubsub_reader = ensure_future(self._pubsub_reader_proc(), loop=self.app.loop)
 
     @asyncio.coroutine
     def finish(self, app):
@@ -118,8 +118,10 @@ class Plugin(BasePlugin):
         if self.cfg.jsonpickle:
             if isinstance(value, bytes):
                 return jsonpickle.decode(value.decode('utf-8'))
+
             if isinstance(value, str):
                 return jsonpickle.decode(value)
+
         return value
 
     @asyncio.coroutine
@@ -161,7 +163,7 @@ class Plugin(BasePlugin):
                     yield from receiver.put(msg)
             except asyncio.CancelledError:
                 raise
-            except Exception:
+            except Exception: # noqa
                 self.app.logger.exception('Pubsub reading failure')
                 # and continue working
                 # unless we are testing
@@ -316,7 +318,7 @@ class Subscription():
         return self.next_published()
 
 
-try:
+try:  # noqa
     import fakeredis
     from fakeredis import FakePubSub as _  # noqa
     # this is to ensure that fakeredis installed is new enough
