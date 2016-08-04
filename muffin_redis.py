@@ -6,6 +6,11 @@ import jsonpickle
 import asyncio_redis
 from muffin.plugins import BasePlugin, PluginException
 
+try:
+    from asyncio import ensure_future
+except ImportError:
+    ensure_future = asyncio.async
+
 
 __version__ = "1.1.1"
 __project__ = "muffin-redis"
@@ -38,9 +43,6 @@ class Plugin(BasePlugin):
         self.pubsub_subscription = None
         # this is a mapping from channels to subscription objects
         self._subscriptions = {}
-        # will be assigned to the subscription instance
-        # which is currently listening for new pubsub events from redis
-        self._receiving = None
 
     def setup(self, app):
         """Setup the plugin."""
@@ -57,6 +59,8 @@ class Plugin(BasePlugin):
                 raise PluginException('Install fakeredis for fake connections.')
 
             self.conn = yield from FakeConnection.create()
+            if self.cfg.pubsub:
+                self.pubsub_conn = self.conn
 
         else:
             try:
@@ -79,16 +83,21 @@ class Plugin(BasePlugin):
                             password=self.cfg.password, db=self.cfg.db,
                         ), self.cfg.timeout
                     )
-                    self.pubsub_subscription = \
-                        yield from self.pubsub_conn.start_subscribe()
             except asyncio.TimeoutError:
                 raise PluginException('Muffin-redis connection timeout.')
+
+        if self.cfg.pubsub:
+            self.pubsub_subscription = \
+                yield from self.pubsub_conn.start_subscribe()
+            self.pubsub_reader = ensure_future(
+                self._pubsub_reader_proc(), loop=self.app.loop)
 
     @asyncio.coroutine
     def finish(self, app):
         """Close self connections."""
         self.conn.close()
         if self.pubsub_conn:
+            self.pubsub_reader.cancel()
             self.pubsub_conn.close()
         # give connections a chance to actually terminate
         # TODO: use better method once it will be added,
@@ -130,6 +139,36 @@ class Plugin(BasePlugin):
         # creates a new context manager
         return Subscription(self)
 
+    @asyncio.coroutine
+    def _pubsub_reader_proc(self):
+        while True:
+            try:
+                # receive and unpickle next message
+                msg = (yield from self.pubsub_subscription.next_published())
+                if self.cfg.jsonpickle:
+                    # We overwrite 'hidden' field `_value` on the message received.
+                    # Hackish way, I know. How can we do it better? XXX
+                    if isinstance(msg.value, bytes):
+                        msg._value = msg.value.decode('utf-8')
+                    if isinstance(msg._value, str):
+                        msg._value = jsonpickle.decode(msg.value)
+
+                # notify all receivers for that message (including self, if any)
+                for receiver in self._subscriptions.get((msg.channel, False), []):
+                    yield from receiver.put(msg)
+
+                for receiver in self._subscriptions.get((msg.pattern, True), []):
+                    yield from receiver.put(msg)
+            except asyncio.CancelledError:
+                raise
+            except Exception:
+                self.app.logger.exception('Pubsub reading failure')
+                # and continue working
+                # unless we are testing
+                if self.cfg.fake:
+                    raise
+            # TODO: maybe we need special handling for other exceptions?
+
     def __getattr__(self, name):
         """Proxy attribute to self connection."""
         return getattr(self.conn, name)
@@ -167,8 +206,8 @@ class Subscription():
     @asyncio.coroutine
     def close(self):
         """Unsubscribe from all channels used by this object."""
-        yield from self.unsubscribe(c for c, m in self._channels if not m)
-        yield from self.punsubscribe(c for c, m in self._channels if m)
+        yield from self.unsubscribe()
+        yield from self.punsubscribe()
 
     def __del__(self):
         """Ensure that we unsubscribed from all channels and warn user if not."""
@@ -203,13 +242,21 @@ class Subscription():
     def _unsubscribe(self, channels, is_mask):
         """Unsubscribe from given channel."""
         vanished = []
-        for channel in channels:
-            key = channel, is_mask
-            self._channels.remove(key)
-            self._plugin._subscriptions[key].remove(self._queue)
-            if not self._plugin._subscriptions[key]:  # we were last sub?
-                vanished.append(channel)
-                del self._plugin._subscriptions[key]
+        if channels:
+            for channel in channels:
+                key = channel, is_mask
+                self._channels.remove(key)
+                self._plugin._subscriptions[key].remove(self._queue)
+                if not self._plugin._subscriptions[key]:  # we were last sub?
+                    vanished.append(channel)
+                    del self._plugin._subscriptions[key]
+        else:
+            while self._channels:
+                channel, is_mask = key = self._channels.pop()
+                self._plugin._subscriptions[key].remove(self._queue)
+                if not self._plugin._subscriptions[key]:
+                    vanished.append(channel)
+                    del self._plugin._subscriptions[key]
         if vanished:
             yield from getattr(
                 self._sub,
@@ -227,12 +274,12 @@ class Subscription():
         return self._subscribe(channels, True)
 
     @asyncio.coroutine
-    def unsubscribe(self, channels):
+    def unsubscribe(self, channels=None):
         """Unsubscribe from given channels."""
         return self._unsubscribe(channels, False)
 
     @asyncio.coroutine
-    def punsubscribe(self, channels):
+    def punsubscribe(self, channels=None):
         """Unsubscribe from given channel's masks."""
         return self._unsubscribe(channels, True)
 
@@ -242,38 +289,13 @@ class Subscription():
         if not self._sub:
             raise ValueError('Not connected')
 
-        if self._plugin._receiving:
-            # someone other is already handling messages,
-            # so leave all work to him
-            return (yield from self._queue.get())
+        # we could check if we are subscribed to anything,
+        # but let's leave it for user to decide:
+        # user may want to first start listening in one task
+        # and only after that subscribe from another task
 
-        try:
-            self._plugin._receiving = self
-            while True:
-                # first check if we already have some message
-                # (it may be left from previous call
-                # if message matched several rules)
-                if not self._queue.empty():
-                    return self._queue.get_nowait()
-
-                # receive and unpickle next message
-                msg = (yield from self._sub.next_published())
-                if self._plugin.cfg.jsonpickle:
-                    # We overwrite 'hidden' field `_value` on the message received.
-                    # Hackish way, I know. How can we do it better? XXX
-                    if isinstance(msg.value, bytes):
-                        msg._value = jsonpickle.decode(msg.value.decode('utf-8'))
-                    if isinstance(msg._value, str):
-                        msg._value = jsonpickle.decode(msg.value)
-
-                # notify all receivers for that message (including self, if any)
-                for receiver in self._plugin._subscriptions.get((msg.channel, False), []):
-                    yield from receiver.put(msg)
-
-                for receiver in self._plugin._subscriptions.get((msg.pattern, True), []):
-                    yield from receiver.put(msg)
-        finally:
-            self._plugin._receiving = None
+        # just wait for plugin._pubsub_reader_proc to feed us
+        return (yield from self._queue.get())
 
     __aenter__ = open  # alias
 
@@ -296,6 +318,8 @@ class Subscription():
 
 try:
     import fakeredis
+    from fakeredis import FakePubSub as _  # noqa
+    # this is to ensure that fakeredis installed is new enough
 
     class FakeRedis(fakeredis.FakeRedis):
 
@@ -324,6 +348,68 @@ try:
         def exec(self):
             """Do nothing."""
             return self
+
+        def start_subscribe(self):
+            # rewrote using our class
+            fps = FakePubSub()
+            self._pubsubs.append(fps)
+            return fps
+
+        @asyncio.coroutine
+        def pubsub_channels(self):
+            channels = set()
+            for ps in self._pubsubs:
+                for channel in ps.channels:
+                    channels.add(channel)
+            return list(channels)
+
+    class FakePubSub(fakeredis.FakePubSub):
+        def __getattribute__(self, name):
+            """Make a coroutine."""
+            import inspect
+            method = super().__getattribute__(name)
+            if not inspect.isfunction(method):
+                return method
+            if method.startswith('_'):
+                return method
+            if not inspect.iscoroutinefunction(method):
+                @asyncio.coroutine
+                def coro(*args, **kwargs):
+                    return method(*args, **kwargs)
+                return coro
+            return method
+
+        # convert API for subscribe methods
+        @asyncio.coroutine
+        def subscribe(self, chl):
+            return super().subscribe(*chl)
+
+        @asyncio.coroutine
+        def psubscribe(self, chl):
+            return super().psubscribe(*chl)
+
+        @asyncio.coroutine
+        def unsubscribe(self, chl):
+            return super().unsubscribe(*chl)
+
+        @asyncio.coroutine
+        def punsubscribe(self, chl):
+            return super().punsubscribe(*chl)
+
+        @asyncio.coroutine
+        def next_published(self):
+            # rewrote `listen` as a coro
+            # but do not respect `self.subscribed`
+            while True:
+                message = super().get_message()
+                if message and 'message' in message['type']:
+                    # convert from fakeredis format to asyncio_redis one
+                    return asyncio_redis.replies.PubSubReply(
+                        channel=message['channel'].decode(),
+                        value=message['data'],
+                        pattern=message['pattern'],
+                    )
+                yield from asyncio.sleep(.1)
 
     class FakeConnection(asyncio_redis.Connection):
 
