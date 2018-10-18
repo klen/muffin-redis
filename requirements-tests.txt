@@ -2,5 +2,4 @@
 -e .
 
 pytest
-webtest
-fakeredis >= 0.7.0
+fakeredis >= 0.14.0
