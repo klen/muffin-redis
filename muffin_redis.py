@@ -13,7 +13,7 @@ except ImportError:
     ensure_future = asyncio.async
 
 
-__version__ = "1.3.0"
+__version__ = "1.3.1"
 __project__ = "muffin-redis"
 __author__ = "Kirill Klenov <horneds@gmail.com>"
 __license__ = "MIT"
