@@ -345,6 +345,11 @@ try:  # noqa
                     channels.add(channel)
             return list(channels)
 
+        @staticmethod
+        def close():
+            """Close a fake connection."""
+            return
+
     class FakePubSub(fakeredis.FakePubSub):
 
         def __init__(self, *args, **kwargs):

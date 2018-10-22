@@ -34,6 +34,8 @@ async def test_muffin_redis(app):  # noqa
     result = await app.ps.redis.get('unknown')
     assert result is None
 
+    await app.ps.redis.cleanup(app)
+
 
 async def test_muffin_redis_pubsub(app):
     subscriber = await app.ps.redis.start_subscribe().open()
