@@ -10,7 +10,7 @@ from muffin.utils import to_coroutine
 try:
     from asyncio import ensure_future
 except ImportError:
-    ensure_future = asyncio.async
+    ensure_future = getattr(asyncio, 'async')
 
 
 __version__ = "1.3.1"
