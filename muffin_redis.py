@@ -107,8 +107,13 @@ class Plugin(BasePlugin):
 
         :returns: a coroutine
         """
+        if self.cfg.fake and 'expire' in kwargs:
+            kwargs['ex'] = kwargs.pop('expire')
+            kwargs.pop('only_if_not_exists')
+
         if self.cfg.jsonpickle:
             value = jsonpickle.encode(value)
+
         return self.conn.set(key, value, *args, **kwargs)
 
     async def get(self, key):
