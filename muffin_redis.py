@@ -1,16 +1,11 @@
 """Redis support for Muffin framework."""
-
+import asyncio as aio
 import warnings
-import asyncio
-import jsonpickle
+
 import asyncio_redis
+import jsonpickle
 from muffin.plugins import BasePlugin, PluginException
 from muffin.utils import to_coroutine
-
-try:
-    from asyncio import ensure_future
-except ImportError:
-    ensure_future = asyncio.async
 
 
 __version__ = "1.3.2"
@@ -66,30 +61,30 @@ class Plugin(BasePlugin):
         else:
             try:
                 if self.cfg.poolsize <= 1:
-                    self.conn = await asyncio.wait_for(
+                    self.conn = await aio.wait_for(
                         asyncio_redis.Connection.create(
                             host=self.cfg.host, port=self.cfg.port,
                             password=self.cfg.password, db=self.cfg.db,
                         ), self.cfg.timeout)
                 else:
-                    self.conn = await asyncio.wait_for(asyncio_redis.Pool.create(
+                    self.conn = await aio.wait_for(asyncio_redis.Pool.create(
                         host=self.cfg.host, port=self.cfg.port,
                         password=self.cfg.password, db=self.cfg.db,
                         poolsize=self.cfg.poolsize,
                     ), self.cfg.timeout)
                 if self.cfg.pubsub:
-                    self.pubsub_conn = await asyncio.wait_for(
+                    self.pubsub_conn = await aio.wait_for(
                         asyncio_redis.Connection.create(
                             host=self.cfg.host, port=self.cfg.port,
                             password=self.cfg.password, db=self.cfg.db,
                         ), self.cfg.timeout
                     )
-            except asyncio.TimeoutError:
+            except aio.TimeoutError:
                 raise PluginException('Muffin-redis connection timeout.')
 
         if self.cfg.pubsub:
             self.pubsub_subscription = await self.pubsub_conn.start_subscribe()
-            self.pubsub_reader = ensure_future(self._pubsub_reader_proc(), loop=self.app.loop)
+            self.pubsub_reader = aio.ensure_future(self._pubsub_reader_proc(), loop=self.app.loop)
 
     async def cleanup(self, app):
         """Close self connections."""
@@ -100,7 +95,7 @@ class Plugin(BasePlugin):
         # give connections a chance to actually terminate
         # TODO: use better method once it will be added,
         # see https://github.com/jonathanslenders/asyncio-redis/issues/56
-        await asyncio.sleep(0)
+        await aio.sleep(0)
 
     def set(self, key, value, *args, **kwargs):
         """Store the given value into Redis.
@@ -167,7 +162,7 @@ class Plugin(BasePlugin):
                 for receiver in self._subscriptions.get((msg.pattern, True), []):
                     await receiver.put(msg)
 
-            except asyncio.CancelledError:
+            except aio.CancelledError:
                 raise
 
             except Exception: # noqa
@@ -203,7 +198,7 @@ class Subscription():
         self._plugin = plugin
         self._sub = plugin.pubsub_subscription
         self._channels = []
-        self._queue = asyncio.Queue()
+        self._queue = aio.Queue()
 
     async def open(self):
         """Do nothing (because connection was established during initialization).
@@ -323,11 +318,10 @@ class Subscription():
 
 
 try:  # noqa
-    import fakeredis
-    from fakeredis import FakePubSub as _, _patch_responses  # noqa
+    import fakeredis as fake
     # this is to ensure that fakeredis installed is new enough
 
-    class FakeRedis(fakeredis.FakeRedis):
+    class FakeRedis(fake.FakeRedis):
 
         """Fake connection for tests."""
 
@@ -335,7 +329,7 @@ try:  # noqa
             super(FakeRedis, self).__init__(*args, **kwargs)
 
             # Convert methods to coroutines
-            _patch_responses(self, to_coroutine)
+            fake._patch_responses(self, to_coroutine)
 
         def start_subscribe(self):
             # rewrote using our class
@@ -355,7 +349,7 @@ try:  # noqa
             """Close a fake connection."""
             return
 
-    class FakePubSub(fakeredis.FakePubSub):
+    class FakePubSub(fake.FakePubSub):
 
         def __init__(self, *args, **kwargs):
             super(FakePubSub, self).__init__(*args, **kwargs)
@@ -365,6 +359,8 @@ try:  # noqa
             for attr_name in dir(obj):
                 attr = getattr(obj, attr_name)
                 if not callable(attr) or attr_name.startswith('_') or attr_name == 'put':
+                    continue
+                if aio.iscoroutinefunction(attr):
                     continue
                 func = decorator(attr)
                 setattr(obj, attr_name, func)
@@ -382,13 +378,12 @@ try:  # noqa
         def punsubscribe(self, chl):
             return super().punsubscribe(*chl)
 
-        def next_published(self):
+        # convert API for subscribe methods
+        async def next_published(self):
             # rewrote `listen` as a coro
             # but do not respect `self.subscribed`
             while True:
-                message = super().get_message()
-                if message:
-                    message = yield from message
+                message = await self.get_message()
                 if message and 'message' in message['type']:
                     # convert from fakeredis format to asyncio_redis one
                     return asyncio_redis.replies.PubSubReply(
@@ -396,7 +391,7 @@ try:  # noqa
                         value=message['data'],
                         pattern=message['pattern'],
                     )
-                yield from asyncio.sleep(.1)
+                await aio.sleep(.1)
 
     class FakeConnection(asyncio_redis.Connection):
 
