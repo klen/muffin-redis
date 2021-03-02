@@ -1,3 +1,0 @@
-muffin          >= 0.30
-jsonpickle      >= 1.0
-asyncio_redis   >= 0.15.1

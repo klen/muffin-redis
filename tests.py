@@ -4,66 +4,52 @@ import datetime
 
 
 @pytest.fixture
-def app(loop):
-    app = muffin.Application(
-        'redis',
-        PLUGINS=['muffin_redis'],
-        REDIS_FAKE=True,
-        REDIS_PUBSUB=True,
-    )
-    app.on_startup.freeze()
-    loop.run_until_complete(app.startup())
-    app.freeze()
-    return app
+async def app():
+    from muffin_redis import Plugin as Redis
+
+    app = muffin.Application('redis', debug=True)
+    Redis(app, fake=True)
+    async with app.lifespan:
+        yield app
 
 
-async def test_muffin_redis(app):  # noqa
-    assert app.ps.redis
-    assert app.ps.redis.conn
+@pytest.mark.parametrize('aiolib', ['asyncio'])
+async def test_muffin_redis(app):
+    redis = app.plugins['redis']
 
-    await app.ps.redis.set('key', 'value', 10)
-    result = await app.ps.redis.get('key')
-    assert result == 'value'
-
-    await app.ps.redis.set('dict', {
-        'now': datetime.datetime.now()
-    })
-    result = await app.ps.redis.get('dict')
-    assert result and 'now' in result and isinstance(result['now'], datetime.datetime)
-
-    result = await app.ps.redis.get('unknown')
+    result = await redis.get('key')
     assert result is None
 
-    await app.ps.redis.cleanup(app)
+    await redis.set('key', 'value', expire=10)
+    result = await redis.get('key')
+    assert result == 'value'
+
+    await redis.set('dict', {
+        'now': datetime.datetime.now()
+    }, jsonify=True)
+    result = await redis.get('dict', jsonify=True)
+    assert result and 'now' in result
+
+    result = await redis.get('unknown')
+    assert result is None
 
 
+@pytest.mark.parametrize('aiolib', ['asyncio'])
 async def test_muffin_redis_pubsub(app):
-    subscriber = await app.ps.redis.start_subscribe().open()
-    await subscriber.subscribe(['channel'])
-    channels = await app.ps.redis.pubsub_conn.pubsub_channels()
-    assert b'channel' in channels
+    from asgi_tools._compat import aio_spawn, aio_sleep
 
-    await app.ps.redis.publish('channel', 'Hello world')
-    await app.ps.redis.publish('channel', {
-        'now': datetime.datetime.now(),
-    })
+    redis = app.plugins['redis']
 
-    result = await subscriber.next_published()
-    assert result and result.value == 'Hello world'
+    async def reader(channel, conn):
+        await conn.execute('subscribe', channel)
+        ch = conn.pubsub_channels[channel]
+        await ch.wait_message()
+        msg = await ch.get()
+        return msg
 
-    # another way: iterator style
-    #async for result in subscriber:
-    #    value = result.value
-    #    assert value and 'now' in value and isinstance(value['now'], datetime.datetime)
-    #    break
-    # -- but this test requires python 3.5, so for now use older syntax
-    result = await subscriber.__anext__()
-    assert result and 'now' in result.value and isinstance(result.value['now'], datetime.datetime)
+    async with aio_spawn(reader, 'chan:1', redis.conn.connection) as task:
+        await aio_sleep(0)
+        await redis.publish('chan:1', 'test')
+        await aio_sleep(0)
 
-    await subscriber.unsubscribe()
-    result = await app.ps.redis.conn.pubsub_channels()
-    #assert 'channel' not in result --
-    # disabled because fakeredis' unsubscribe doesn't remove channel from list
-    # when unsubscribing from it
-
-    await subscriber.close()
+    assert task.result() == b'test'
