@@ -7,7 +7,7 @@ import datetime
 async def app():
     from muffin_redis import Plugin as Redis
 
-    app = muffin.Application('redis', debug=True)
+    app = muffin.Application(debug=True)
     Redis(app, fake=True)
     async with app.lifespan:
         yield app
