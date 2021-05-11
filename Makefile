@@ -41,17 +41,6 @@ patch:
 major:
 	make release VERSION=major
 
-# ===============
-#  Build package
-# ===============
-
-.PHONY: upload
-# target: upload - Upload module on PyPi
-upload: clean $(VIRTUAL_ENV)
-	@$(VIRTUAL_ENV)/bin/pip install twine wheel
-	@$(VIRTUAL_ENV)/bin/python setup.py sdist bdist_wheel
-	@$(VIRTUAL_ENV)/bin/twine upload dist/*
-
 # =============
 #  Development
 # =============

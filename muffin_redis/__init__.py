@@ -6,7 +6,7 @@ import aioredis
 from asgi_tools._compat import json_dumps, json_loads
 
 from muffin import Application
-from muffin.plugin import BasePlugin
+from muffin.plugins import BasePlugin
 
 try:
     import fakeredis
