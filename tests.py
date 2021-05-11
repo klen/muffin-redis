@@ -1,6 +1,6 @@
 import muffin
 import pytest
-import datetime
+import time
 
 
 @pytest.fixture
@@ -25,7 +25,7 @@ async def test_muffin_redis(app):
     assert result == 'value'
 
     await redis.set('dict', {
-        'now': datetime.datetime.now()
+        'now': time.time()
     }, jsonify=True)
     result = await redis.get('dict', jsonify=True)
     assert result and 'now' in result
