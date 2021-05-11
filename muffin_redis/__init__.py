@@ -15,7 +15,7 @@ except ImportError:
     fakeredis = None
     fake_aioredis = None
 
-__version__ = "2.0.1"
+__version__ = "2.0.2"
 
 
 class Plugin(BasePlugin):
