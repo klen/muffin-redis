@@ -93,7 +93,7 @@ class Plugin(BasePlugin):
     @asynccontextmanager
     async def lock(self, key: str, ex: int = None):
         """Simplest lock (before aioredis 2.0+)."""  # noqa
-        lock_ = await self.conn.set(key, '1', expire=25, exist='SET_IF_NOT_EXIST')
+        lock_ = await self.conn.set(key, '1', expire=ex, exist='SET_IF_NOT_EXIST')
         try:
             yield lock_
         finally:
