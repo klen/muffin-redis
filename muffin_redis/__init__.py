@@ -3,6 +3,7 @@
 import typing as t
 
 import aioredis
+from contextlib import asynccontextmanager
 from asgi_tools._compat import json_dumps, json_loads
 
 from muffin import Application
@@ -88,3 +89,13 @@ class Plugin(BasePlugin):
             return json_loads(value)
 
         return value
+
+    @asynccontextmanager
+    async def lock(self, key: str, ex: int = None):
+        """Simplest lock (before aioredis 2.0+)."""  # noqa
+        lock_ = await self.conn.set(key, '1', expire=25, exist='SET_IF_NOT_EXIST')
+        try:
+            yield lock_
+        finally:
+            if lock_:
+                await self.conn.delete(key)

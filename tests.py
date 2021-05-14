@@ -4,6 +4,12 @@ import time
 
 
 @pytest.fixture
+def aiolib():
+    """Disable uvloop for tests."""
+    return ('asyncio', {'use_uvloop': False})
+
+
+@pytest.fixture
 async def app():
     from muffin_redis import Plugin as Redis
 
@@ -13,7 +19,6 @@ async def app():
         yield app
 
 
-@pytest.mark.parametrize('aiolib', ['asyncio'])
 async def test_muffin_redis(app):
     redis = app.plugins['redis']
 
@@ -34,7 +39,6 @@ async def test_muffin_redis(app):
     assert result is None
 
 
-@pytest.mark.parametrize('aiolib', ['asyncio'])
 async def test_muffin_redis_pubsub(app):
     from asgi_tools._compat import aio_spawn, aio_sleep
 
@@ -53,3 +57,19 @@ async def test_muffin_redis_pubsub(app):
         await aio_sleep(0)
 
     assert task.result() == b'test'
+
+
+async def test_simple_lock(app):
+    redis = app.plugins['redis']
+
+    async with redis.lock('l1') as lock:
+        assert lock
+
+        async with redis.lock('l2') as lock2:
+            assert lock2
+
+        async with redis.lock('l1') as same_lock:
+            assert not same_lock
+
+    async with redis.lock('l1') as lock:
+        assert lock
