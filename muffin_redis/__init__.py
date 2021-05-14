@@ -34,14 +34,11 @@ class Plugin(BasePlugin):
         'jsonify': False,
     }
 
-    def __init__(self, *args, **kwargs):
-        """Initialize the plugin."""
-        self.conn = None
-        super(Plugin, self).__init__(*args, **kwargs)
+    client = None
 
     def __getattr__(self, name):
         """Proxy attribute to self connection."""
-        return getattr(self.conn, name)
+        return getattr(self.client, name)
 
     def setup(self, app: Application, **options):
         """Check the configuration."""
@@ -54,34 +51,34 @@ class Plugin(BasePlugin):
         params = {'db': self.cfg.db, 'password': self.cfg.password, 'encoding': self.cfg.encoding}
 
         if self.cfg.fake and self.cfg.poolsize:
-            self.conn = await fake_aioredis.create_redis_pool(
+            self.client = await fake_aioredis.create_redis_pool(
                 fakeredis.FakeServer(), maxsize=self.cfg.poolsize, **params)
 
         elif self.cfg.fake and not self.cfg.poolsize:
-            self.conn = await fake_aioredis.create_redis(fakeredis.FakeServer(), **params)
+            self.client = await fake_aioredis.create_redis(fakeredis.FakeServer(), **params)
 
         elif not self.cfg.fake and self.cfg.poolsize:
-            self.conn = await aioredis.create_pool(
+            self.client = await aioredis.create_redis_pool(
                 self.cfg.address, maxsize=self.cfg.poolsize, **params)
 
         elif not self.cfg.fake and not self.cfg.poolsize:
-            self.conn = await aioredis.create_connection(self.cfg.address, **params)
+            self.client = await aioredis.create_redis(self.cfg.address, **params)
 
     async def shutdown(self):
         """Close the redis pool."""
-        self.conn.close()
-        await self.conn.wait_closed()
+        self.client.connection.close()
+        await self.client.connection.wait_closed()
 
     def set(self, key, value, *, jsonify: bool = None, **options) -> t.Awaitable:
         """Store the given value into Redis."""
         if (self.cfg.jsonify if jsonify is None else jsonify):
             value = json_dumps(value)
 
-        return self.conn.set(key, value, **options)
+        return self.client.set(key, value, **options)
 
     async def get(self, key, *, jsonify: bool = None, **options):
         """Decode the value."""
-        value = await self.conn.get(key, **options)
+        value = await self.client.get(key, **options)
 
         if (self.cfg.jsonify if jsonify is None else jsonify):
             if isinstance(value, bytes):
@@ -93,9 +90,9 @@ class Plugin(BasePlugin):
     @asynccontextmanager
     async def lock(self, key: str, ex: int = None):
         """Simplest lock (before aioredis 2.0+)."""  # noqa
-        lock_ = await self.conn.set(key, '1', expire=ex, exist='SET_IF_NOT_EXIST')
+        lock_ = await self.client.set(key, '1', expire=ex, exist='SET_IF_NOT_EXIST')
         try:
             yield lock_
         finally:
             if lock_:
-                await self.conn.delete(key)
+                await self.client.delete(key)

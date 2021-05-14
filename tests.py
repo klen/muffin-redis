@@ -3,22 +3,25 @@ import pytest
 import time
 
 
-@pytest.fixture
+@pytest.fixture(scope='session')
 def aiolib():
     """Disable uvloop for tests."""
     return ('asyncio', {'use_uvloop': False})
 
 
 @pytest.fixture
-async def app():
+async def app(request):
     from muffin_redis import Plugin as Redis
 
     app = muffin.Application(debug=True)
-    Redis(app, fake=True)
+    redis = Redis(app, fake=request.param)
     async with app.lifespan:
         yield app
+        if not request.param:
+            await redis.flushall()
 
 
+@pytest.mark.parametrize('app', (True, False), indirect=True)
 async def test_muffin_redis(app):
     redis = app.plugins['redis']
 
@@ -39,6 +42,7 @@ async def test_muffin_redis(app):
     assert result is None
 
 
+@pytest.mark.parametrize('app', (True, False), indirect=True)
 async def test_muffin_redis_pubsub(app):
     from asgi_tools._compat import aio_spawn, aio_sleep
 
@@ -51,14 +55,15 @@ async def test_muffin_redis_pubsub(app):
         msg = await ch.get()
         return msg
 
-    async with aio_spawn(reader, 'chan:1', redis.conn.connection) as task:
-        await aio_sleep(0)
+    async with aio_spawn(reader, 'chan:1', redis.connection) as task:
+        await aio_sleep(0.1)
         await redis.publish('chan:1', 'test')
-        await aio_sleep(0)
+        await aio_sleep(0.1)
 
     assert task.result() == b'test'
 
 
+@pytest.mark.parametrize('app', (True, False), indirect=True)
 async def test_simple_lock(app):
     redis = app.plugins['redis']
 
