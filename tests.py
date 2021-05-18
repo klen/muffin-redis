@@ -17,8 +17,7 @@ async def app(request):
     redis = Redis(app, fake=request.param)
     async with app.lifespan:
         yield app
-        if not request.param:
-            await redis.flushall()
+        await redis.flushall()
 
 
 @pytest.mark.parametrize('app', (True, False), indirect=True)
@@ -83,6 +82,9 @@ async def test_simple_lock(app):
 @pytest.mark.parametrize('app', (True, False), indirect=True)
 async def test_jsonnify(app):
     redis = app.plugins['redis']
+
+    res = await redis.get('l1', jsonify=True)
+    assert res is None
 
     await redis.set('l1', "[1, 2, 3")
     res = await redis.get('l1', jsonify=True)

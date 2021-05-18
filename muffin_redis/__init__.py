@@ -80,7 +80,7 @@ class Plugin(BasePlugin):
         """Decode the value."""
         value = await self.client.get(key, **options)
 
-        if (self.cfg.jsonify if jsonify is None else jsonify):
+        if value is not None and (self.cfg.jsonify if jsonify is None else jsonify):
             if isinstance(value, bytes):
                 value = value.decode('utf-8')
 
