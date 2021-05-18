@@ -78,3 +78,16 @@ async def test_simple_lock(app):
 
     async with redis.lock('l1') as lock:
         assert lock
+
+
+@pytest.mark.parametrize('app', (True, False), indirect=True)
+async def test_jsonnify(app):
+    redis = app.plugins['redis']
+
+    await redis.set('l1', "[1, 2, 3")
+    res = await redis.get('l1', jsonify=True)
+    assert res == '[1, 2, 3'
+
+    await redis.set('l1', [1, 2, 3], jsonify=True)
+    res = await redis.get('l1', jsonify=True)
+    assert res == [1, 2, 3]

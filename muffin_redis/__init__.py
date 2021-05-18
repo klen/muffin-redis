@@ -83,7 +83,11 @@ class Plugin(BasePlugin):
         if (self.cfg.jsonify if jsonify is None else jsonify):
             if isinstance(value, bytes):
                 value = value.decode('utf-8')
-            return json_loads(value)
+
+            try:
+                return json_loads(value)
+            except ValueError:
+                pass
 
         return value
 
