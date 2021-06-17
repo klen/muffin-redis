@@ -54,3 +54,6 @@ $(VIRTUAL_ENV): setup.cfg
 # target: test - Runs tests
 test t: $(VIRTUAL_ENV)
 	@$(VIRTUAL_ENV)/bin/pytest tests.py
+
+mypy:
+	$(VIRTUAL_ENV)/bin/mypy muffin_redis

@@ -50,19 +50,19 @@ class Plugin(BasePlugin):
         """Setup a redis connection."""
         params = {'db': self.cfg.db, 'password': self.cfg.password, 'encoding': self.cfg.encoding}
 
-        if self.cfg.fake and self.cfg.poolsize:
-            self.client = await fake_aioredis.create_redis_pool(
-                fakeredis.FakeServer(), maxsize=self.cfg.poolsize, **params)
+        if self.cfg.fake:
+            if self.cfg.poolsize:
+                self.client = await fake_aioredis.create_redis_pool(
+                    fakeredis.FakeServer(), maxsize=self.cfg.poolsize, **params)
+            else:
+                self.client = await fake_aioredis.create_redis(fakeredis.FakeServer(), **params)
 
-        elif self.cfg.fake and not self.cfg.poolsize:
-            self.client = await fake_aioredis.create_redis(fakeredis.FakeServer(), **params)
-
-        elif not self.cfg.fake and self.cfg.poolsize:
-            self.client = await aioredis.create_redis_pool(
-                self.cfg.address, maxsize=self.cfg.poolsize, **params)
-
-        elif not self.cfg.fake and not self.cfg.poolsize:
-            self.client = await aioredis.create_redis(self.cfg.address, **params)
+        else:
+            if self.cfg.poolsize:
+                self.client = await aioredis.create_redis_pool(
+                    self.cfg.address, maxsize=self.cfg.poolsize, **params)
+            else:
+                self.client = await aioredis.create_redis(self.cfg.address, **params)
 
     async def shutdown(self):
         """Close the redis pool."""
@@ -74,11 +74,19 @@ class Plugin(BasePlugin):
         if (self.cfg.jsonify if jsonify is None else jsonify):
             value = json_dumps(value)
 
-        return self.client.set(key, value, **options)
+        client = self.client
+        if client is None:
+            raise RuntimeError('Redis Plugin should be started')
+
+        return client.set(key, value, **options)
 
     async def get(self, key, *, jsonify: bool = None, **options):
         """Decode the value."""
-        value = await self.client.get(key, **options)
+        client = self.client
+        if client is None:
+            raise RuntimeError('Redis Plugin should be started')
+
+        value = await client.get(key, **options)
 
         if value is not None and (self.cfg.jsonify if jsonify is None else jsonify):
             if isinstance(value, bytes):
@@ -94,9 +102,14 @@ class Plugin(BasePlugin):
     @asynccontextmanager
     async def lock(self, key: str, ex: int = None):
         """Simplest lock (before aioredis 2.0+)."""  # noqa
-        lock_ = await self.client.set(key, '1', expire=ex, exist='SET_IF_NOT_EXIST')
+
+        client = self.client
+        if client is None:
+            raise RuntimeError('Redis Plugin should be started')
+
+        lock_ = await client.set(key, '1', expire=ex, exist='SET_IF_NOT_EXIST')
         try:
             yield lock_
         finally:
             if lock_:
-                await self.client.delete(key)
+                await client.delete(key)
