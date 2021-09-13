@@ -3,18 +3,9 @@
 import typing as t
 
 import aioredis
-from contextlib import asynccontextmanager
 from asgi_tools._compat import json_dumps, json_loads
 
-from muffin import Application
 from muffin.plugins import BasePlugin
-
-try:
-    import fakeredis
-    from fakeredis import aioredis as fake_aioredis
-except ImportError:
-    fakeredis = None
-    fake_aioredis = None
 
 __version__ = "2.1.5"
 
@@ -25,12 +16,12 @@ class Plugin(BasePlugin):
 
     name = 'redis'
     defaults = {
-        'address': 'redis://localhost',
+        'url': 'redis://localhost',
         'db': None,
         'password': None,
         'poolsize': 10,
-        'fake': False,
         'encoding': 'utf-8',
+        'decode_responses': True,
         'jsonify': False,
     }
 
@@ -40,34 +31,18 @@ class Plugin(BasePlugin):
         """Proxy attribute to self connection."""
         return getattr(self.client, name)
 
-    def setup(self, app: Application, **options):
-        """Check the configuration."""
-        super(Plugin, self).setup(app, **options)
-        if self.cfg.fake and not fake_aioredis:
-            raise RuntimeError('`fakeredis` is required to support `fake` mode.')
-
     async def startup(self):
         """Setup a redis connection."""
-        params = {'db': self.cfg.db, 'password': self.cfg.password, 'encoding': self.cfg.encoding}
+        params = {
+            'db': self.cfg.db, 'password': self.cfg.password,
+            'decode_responses': self.cfg.decode_responses, 'encoding': self.cfg.encoding}
 
-        if self.cfg.fake:
-            if self.cfg.poolsize:
-                self.client = await fake_aioredis.create_redis_pool(
-                    fakeredis.FakeServer(), maxsize=self.cfg.poolsize, **params)
-            else:
-                self.client = await fake_aioredis.create_redis(fakeredis.FakeServer(), **params)
-
-        else:
-            if self.cfg.poolsize:
-                self.client = await aioredis.create_redis_pool(
-                    self.cfg.address, maxsize=self.cfg.poolsize, **params)
-            else:
-                self.client = await aioredis.create_redis(self.cfg.address, **params)
+        self.client = aioredis.from_url(self.cfg.url, max_connections=self.cfg.poolsize, **params)
 
     async def shutdown(self):
         """Close the redis pool."""
-        self.client.connection.close()
-        await self.client.connection.wait_closed()
+        await self.client.close()
+        await self.client.connection_pool.disconnect()
 
     def set(self, key, value, *, jsonify: bool = None, **options) -> t.Awaitable:
         """Store the given value into Redis."""
@@ -98,18 +73,3 @@ class Plugin(BasePlugin):
                 pass
 
         return value
-
-    @asynccontextmanager
-    async def lock(self, key: str, ex: int = None):
-        """Simplest lock (before aioredis 2.0+)."""  # noqa
-
-        client = self.client
-        if client is None:
-            raise RuntimeError('Redis Plugin should be started')
-
-        lock_ = await client.set(key, '1', expire=ex, exist='SET_IF_NOT_EXIST')
-        try:
-            yield lock_
-        finally:
-            if lock_:
-                await client.delete(key)

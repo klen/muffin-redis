@@ -89,13 +89,13 @@ Configuration options
 =========================== ======================================= =========================== 
 Name                        Default value                           Description
 --------------------------- --------------------------------------- ---------------------------
-**address**                 ``"redis://localhost"``                 Redis connection URL
+**url**                     ``"redis://localhost"``                 Redis connection URL
 **db**                      ``None``                                Number of the Redis DB
 **password**                ``None``                                Connection password
 **encoding**                ``"utf-8"``                             Connection encoding
 **poolsize**                ``10``                                  Connections pool size (set 0 to disable pooling)
+**decode_responses**        ``True``                                Decode binary responses
 **jsonify**                 ``False``                               Use json to store/read objects with get/set
-**fake**                    ``False``                               Use ``fakeredis``. The option is convenient for testing
 =========================== ======================================= =========================== 
 
 .. _bugtracker:
