@@ -1,3 +1,5 @@
+import asyncio
+import muffin
 import pytest
 
 
@@ -9,7 +11,6 @@ def aiolib():
 
 @pytest.fixture
 async def app(redis_url):
-    import muffin
     from muffin_redis import Plugin as Redis
 
     app = muffin.Application(debug=True)
@@ -36,6 +37,32 @@ async def test_muffin_redis(app):
 
     result = await redis.get('unknown')
     assert result is None
+
+
+async def test_pool():
+    from muffin_redis import Plugin as Redis
+
+    app = muffin.Application()
+
+    async def block_conn(client):
+        async with client:
+            await asyncio.sleep(1e-2)
+            return await client.info()
+
+    redis = Redis(app, poolsize=2)
+    await redis.startup()
+
+    res = await asyncio.gather(block_conn(redis), block_conn(redis), block_conn(redis))
+    assert res
+    assert len(res) == 3
+    await redis.shutdown()
+
+    redis = Redis(app, poolsize=2, blocking=False)
+    await redis.startup()
+
+    with pytest.raises(redis.Error):
+        await asyncio.gather(block_conn(redis), block_conn(redis), block_conn(redis))
+    await redis.shutdown()
 
 
 async def test_jsonnify(app):

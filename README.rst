@@ -96,6 +96,8 @@ Name                        Default value                           Description
 **poolsize**                ``10``                                  Connections pool size (set 0 to disable pooling)
 **decode_responses**        ``True``                                Decode binary responses
 **jsonify**                 ``False``                               Use json to store/read objects with get/set
+**blocking**                ``True``                                Wait for an available connection
+**timeout**                 ``20``                                  Timeout to get a connection
 =========================== ======================================= =========================== 
 
 .. _bugtracker:

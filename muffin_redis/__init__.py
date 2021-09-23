@@ -2,7 +2,7 @@
 
 import typing as t
 
-import aioredis
+from aioredis import BlockingConnectionPool, ConnectionPool, Redis, RedisError
 from asgi_tools._compat import json_dumps, json_loads
 
 from muffin.plugins import BasePlugin
@@ -19,17 +19,28 @@ class Plugin(BasePlugin):
         'url': 'redis://localhost',
         'db': None,
         'password': None,
-        'poolsize': 10,
         'encoding': 'utf-8',
         'decode_responses': True,
         'jsonify': False,
+
+        'poolsize': 10,
+        'blocking': True,
+        'timeout': 20,
     }
 
     client = None
+    Error = RedisError
 
     def __getattr__(self, name):
         """Proxy attribute to self connection."""
         return getattr(self.client, name)
+
+    async def __aenter__(self):
+        await self.client.__aenter__()
+        return self
+
+    async def __aexit__(self, *args):
+        await self.client.__aexit__(*args)
 
     async def startup(self):
         """Setup a redis connection."""
@@ -37,7 +48,12 @@ class Plugin(BasePlugin):
             'db': self.cfg.db, 'password': self.cfg.password,
             'decode_responses': self.cfg.decode_responses, 'encoding': self.cfg.encoding}
 
-        self.client = aioredis.from_url(self.cfg.url, max_connections=self.cfg.poolsize, **params)
+        if self.cfg.blocking:
+            params['timeout'] = self.cfg.timeout
+
+        pool_cls = BlockingConnectionPool if self.cfg.blocking else ConnectionPool
+        pool = pool_cls.from_url(self.cfg.url, max_connections=self.cfg.poolsize, **params)
+        self.client = Redis(connection_pool=pool)
 
     async def shutdown(self):
         """Close the redis pool."""
