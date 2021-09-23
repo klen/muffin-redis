@@ -39,10 +39,10 @@ async def test_muffin_redis(app):
     assert result is None
 
 
-async def test_pool():
+async def test_pool(redis_url):
     from muffin_redis import Plugin as Redis
 
-    app = muffin.Application()
+    app = muffin.Application(REDIS_URL=redis_url)
 
     async def block_conn(client):
         async with client:
