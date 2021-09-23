@@ -7,7 +7,7 @@ from asgi_tools._compat import json_dumps, json_loads
 
 from muffin.plugins import BasePlugin
 
-__version__ = "3.0.0"
+__version__ = "3.0.1"
 
 
 class Plugin(BasePlugin):
