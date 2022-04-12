@@ -39,10 +39,6 @@ Installation
 
     pip install muffin-redis
 
-To install ``fakeredis`` (for testing purposes): ::
-
-    pip install muffin-redis[fake]
-
 .. _usage:
 
 Usage

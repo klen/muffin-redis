@@ -27,22 +27,14 @@ jobs:
       uses: actions/setup-python@main
       with:
         python-version: ${{ matrix.python-version }}
-
-    - name: Cache env
-      id: cache-env
-      uses: actions/cache@main
-      with:
-        path: env
-        key: ${{ runner.os }}-${{ matrix.python-version }}-${{ hashFiles('setup.cfg', 'requirements.txt') }}
+        cache: pip
 
     - name: Setup requirements
       run: |
-        python -m venv env
-        env/bin/pip install -e .[tests]
-      if: steps.cache-env.outputs.cache-hit != 'true'
+        pip install -e .[tests]
 
     - name: Test with pytest
-      run: env/bin/pytest tests.py
+      run: pytest tests.py
 
   notify:
     runs-on: ubuntu-latest
