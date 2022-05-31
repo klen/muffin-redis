@@ -1,7 +1,9 @@
 include LICENSE
 include MANIFEST.in
 include README.rst
-include requirements.txt
+
+recursive-include muffin_redis *
+recursive-include requirements *.txt
 
 recursive-exclude * __pycache__
 recursive-exclude * *.py[co]
