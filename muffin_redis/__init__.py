@@ -10,7 +10,7 @@ from muffin.plugins import BasePlugin
 from redis.asyncio import BlockingConnectionPool, ConnectionPool, Redis, RedisError
 from redis.typing import EncodableT, KeyT
 
-__version__ = "3.3.0"
+__version__ = "3.3.1"
 
 
 class Plugin(BasePlugin):
