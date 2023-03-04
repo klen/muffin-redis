@@ -1,6 +1,6 @@
 [project]
 name = "muffin-redis"
-version = "3.3.1"
+version = "3.4.0"
 description = "Redis support for Muffin framework."
 readme = "README.rst"
 requires-python = ">=3.8"
