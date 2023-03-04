@@ -1,5 +1,0 @@
-pytest
-pytest-aio
-pytest-mypy
-pytest-redislite
-types-redis

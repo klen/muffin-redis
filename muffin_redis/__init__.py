@@ -1,16 +1,17 @@
 """Redis support for Muffin framework."""
 
+from __future__ import annotations
+
 from contextlib import suppress
-from typing import Optional
+from typing import TYPE_CHECKING, Optional
 
 from asgi_tools._compat import json_dumps, json_loads
-from muffin import Application
 from muffin.plugins import BasePlugin
-
 from redis.asyncio import BlockingConnectionPool, ConnectionPool, Redis, RedisError
-from redis.typing import EncodableT, KeyT
 
-__version__ = "3.3.1"
+if TYPE_CHECKING:
+    from muffin import Application
+    from redis.typing import EncodableT, KeyT
 
 
 class Plugin(BasePlugin):
@@ -51,7 +52,7 @@ class Plugin(BasePlugin):
 
         pool_cls = BlockingConnectionPool if self.cfg.blocking else ConnectionPool
         pool = pool_cls.from_url(
-            self.cfg.url, max_connections=self.cfg.poolsize, **params
+            self.cfg.url, max_connections=self.cfg.poolsize, **params,
         )
         self.__client__ = Redis(connection_pool=pool)
 
@@ -85,7 +86,7 @@ class Plugin(BasePlugin):
         value: EncodableT,
         *,
         jsonify: Optional[bool] = None,
-        **options
+        **options,
     ):
         """Store the given value into Redis."""
         if self.cfg.jsonify if jsonify is None else jsonify:
