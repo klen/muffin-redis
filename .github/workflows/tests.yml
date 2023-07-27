@@ -31,7 +31,7 @@ jobs:
         python-version: "3.11"
 
     - name: Setup dependencies
-      run: poetry install --with dev
+      run: poetry install --with dev --extras redislite
 
     - name: Lint the code
       run: |
