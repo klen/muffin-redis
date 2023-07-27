@@ -10,12 +10,12 @@ def aiolib():
     return ("asyncio", {"use_uvloop": False})
 
 
-@pytest.fixture
-async def app(redis_url):
+@pytest.fixture()
+async def app():
     from muffin_redis import Plugin
 
     app = muffin.Application(debug=True)
-    redis = Plugin(app, url=redis_url)
+    redis = Plugin(app, redislite=True)
     async with app.lifespan:
         yield app
         await redis.flushall()
@@ -35,16 +35,17 @@ async def test_muffin_redis(app):
 
     await redis.set("dict", {"now": time.time()}, jsonify=True)
     result = await redis.get("dict", jsonify=True)
-    assert result and "now" in result
+    assert result
+    assert "now" in result
 
     result = await redis.get("unknown")
     assert result is None
 
 
-async def test_pool(redis_url):
+async def test_pool():
     from muffin_redis import Plugin as Redis
 
-    app = muffin.Application(REDIS_URL=redis_url)
+    app = muffin.Application(REDIS_REDISLITE=True)
 
     async def block_conn(client):
         async with client:
@@ -55,7 +56,6 @@ async def test_pool(redis_url):
     await redis.startup()
 
     res = await asyncio.gather(block_conn(redis), block_conn(redis), block_conn(redis))
-    assert res
     assert len(res) == 3
     await redis.shutdown()
 

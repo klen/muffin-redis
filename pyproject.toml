@@ -1,11 +1,12 @@
-[project]
+[tool.poetry]
 name = "muffin-redis"
 version = "3.4.0"
 description = "Redis support for Muffin framework."
 readme = "README.rst"
-requires-python = ">=3.8"
-license = {"text" = "MIT License"}
-authors = [{ name = "Kirill Klenov", email = "horneds@gmail.com" }]
+license = "MIT"
+authors = ["Kirill Klenov <horneds@gmail.com>"]
+homepage = "https://github.com/klen/muffin-redis"
+repository = "https://github.com/klen/muffin-redis"
 keywords = ["redis", "muffin", "asgi", "asyncio"]
 classifiers = [
   "Development Status :: 5 - Production/Stable",
@@ -19,35 +20,31 @@ classifiers = [
   "Programming Language :: Python :: 3.11",
   "Framework :: AsyncIO",
 ]
-dependencies = [
-  "muffin >= 0.92",
-  "redis >= 4.5.1",
-]
 
-[project.urls]
-homepage = "https://github.com/klen/muffin-redis"
-repository = "https://github.com/klen/muffin-redis"
 
-[project.optional-dependencies]
-tests = [
-  "pytest",
-  "pytest-aio",
-  "pytest-mypy",
-  "pytest-redislite",
-  "types-redis",
-  "ruff",
-]
-dev = ["pre-commit", "refurb", "bump2version"]
+[tool.poetry.dependencies]
+python = "^3.8"
+muffin = "^0"
+redis = "^4.5.1"
 
-[tool.setuptools]
-packages = ['muffin_redis']
+# Optional dependencies
+redislite = { version = "*", optional = true }
 
-[tool.setuptools.package-data]
-muffin_redis = ["py.typed"]
+[tool.poetry.extras]
+redislite = ["redislite"]
+
+[tool.poetry.group.dev.dependencies]
+ipdb = "*"
+ruff = "*"
+black = "*"
+pytest = "*"
+pre-commit = "*"
+pytest-aio = "*"
+pytest-mypy = "*"
 
 [tool.pytest.ini_options]
-addopts = "-xsv"
 log_cli = true
+addopts = "-lxsv"
 
 [tool.mypy]
 packages = ["muffin_redis"]
@@ -77,4 +74,28 @@ line-length = 100
 target-version = "py38"
 exclude = [".venv", "docs", "examples"]
 select = ["ALL"]
-ignore = ["D", "UP", "ANN", "DJ", "EM", "RSE", "SLF", "RET", "S101", "PLR2004", "PLR0912", "N804", "A003", "TRY003"]
+ignore = [
+  "D",
+  "UP",
+  "ANN",
+  "DJ",
+  "EM",
+  "RSE",
+  "SLF",
+  "RET",
+  "S101",
+  "PLR2004",
+  "PLR0912",
+  "N804",
+  "A003",
+  "TRY003",
+]
+
+[tool.black]
+line-length = 100
+target-version = ["py311"]
+preview = true
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"

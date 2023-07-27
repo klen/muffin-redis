@@ -20,24 +20,26 @@ jobs:
 
     steps:
 
-    - name: Checkout changes
-      uses: actions/checkout@main
+    - uses: actions/checkout@main
+    - name: Install poetry
+      run: pipx install poetry
 
-    - name: Set up Python ${{ matrix.python-version }}
+    - name: Set up Python 3.11
       uses: actions/setup-python@main
       with:
-        cache: pip
-        python-version: ${{ matrix.python-version }}
+        cache: poetry
+        python-version: "3.11"
 
-    - name: Setup requirements
+    - name: Setup dependencies
+      run: poetry install --with dev
+
+    - name: Lint the code
       run: |
-        pip install -e .[tests]
-
-    - name: Check code
-      run: ruff muffin_redis
+        poetry run mypy
+        poetry run ruff muffin_redis
 
     - name: Test with pytest
-      run: pytest tests.py
+      run: poetry run pytest tests.py
 
   notify:
     runs-on: ubuntu-latest

@@ -28,7 +28,7 @@ Muffin-Redis -- Redis support for Muffin framework.
 Requirements
 =============
 
-- python >= 3.7
+- python >= 3.8
 
 .. _installation:
 
@@ -82,7 +82,7 @@ library's docs for futher reference.
 Configuration options
 ----------------------
 
-=========================== ======================================= =========================== 
+=========================== ======================================= ===========================
 Name                        Default value                           Description
 --------------------------- --------------------------------------- ---------------------------
 **url**                     ``"redis://localhost"``                 Redis connection URL
@@ -94,7 +94,7 @@ Name                        Default value                           Description
 **jsonify**                 ``False``                               Use json to store/read objects with get/set
 **blocking**                ``True``                                Wait for an available connection
 **timeout**                 ``20``                                  Timeout to get a connection
-=========================== ======================================= =========================== 
+=========================== ======================================= ===========================
 
 .. _bugtracker:
 

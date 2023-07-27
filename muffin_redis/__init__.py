@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from contextlib import suppress
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING, Any, ClassVar, Dict, Optional
 
 from asgi_tools._compat import json_dumps, json_loads
 from muffin.plugins import BasePlugin
@@ -15,11 +15,10 @@ if TYPE_CHECKING:
 
 
 class Plugin(BasePlugin):
-
     """Manage Redis."""
 
     name = "redis"
-    defaults = {
+    defaults: ClassVar[Dict[str, Any]] = {
         "url": "redis://localhost",
         "db": None,
         "password": None,
@@ -29,31 +28,41 @@ class Plugin(BasePlugin):
         "poolsize": 10,
         "blocking": True,
         "timeout": 20,
+        "redislite": False,
     }
 
     Error = RedisError
 
-    def __init__(self, app: Optional[Application], **options):
+    def __init__(self, app: Optional[Application] = None, **options):
         """Initialize the plugin."""
         self.__client__: Optional[Redis] = None
+        self.redislite = None
         super().__init__(app, **options)
 
     async def startup(self):
         """Setup a redis connection."""
+        cfg = self.cfg
+
         params = {
-            "db": self.cfg.db,
-            "password": self.cfg.password,
-            "decode_responses": self.cfg.decode_responses,
-            "encoding": self.cfg.encoding,
+            "db": cfg.db,
+            "password": cfg.password,
+            "decode_responses": cfg.decode_responses,
+            "encoding": cfg.encoding,
         }
 
-        if self.cfg.blocking:
-            params["timeout"] = self.cfg.timeout
+        if cfg.blocking:
+            params["timeout"] = cfg.timeout
 
-        pool_cls = BlockingConnectionPool if self.cfg.blocking else ConnectionPool
-        pool = pool_cls.from_url(
-            self.cfg.url, max_connections=self.cfg.poolsize, **params,
-        )
+        pool_cls = BlockingConnectionPool if cfg.blocking else ConnectionPool
+
+        url = cfg.url
+        if cfg.redislite:
+            from redislite import Redis as RedisLite
+
+            self.redislite = RedisLite()
+            url = f"unix://{self.redislite.socket_file}"
+
+        pool = pool_cls.from_url(url, max_connections=cfg.poolsize, **params)
         self.__client__ = Redis(connection_pool=pool)
 
     @property
@@ -79,6 +88,8 @@ class Plugin(BasePlugin):
         """Close the redis pool."""
         await self.client.close()
         await self.client.connection_pool.disconnect()
+        if self.redislite is not None:
+            self.redislite.shutdown()
 
     def set(
         self,
