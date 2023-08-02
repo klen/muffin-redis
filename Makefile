@@ -31,7 +31,7 @@ release:
 	@git checkout develop
 	@git pull
 	@poetry version $(VPART)
-	@git commit -am "Bump version: `poetry version -s`"
+	@git commit -am "build(release): version: `poetry version -s`"
 	@git tag `poetry version -s`
 	@git checkout master
 	@git pull
