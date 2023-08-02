@@ -4,9 +4,9 @@ VIRTUAL_ENV ?= .venv
 #  Development
 # =============
 
-$(VIRTUAL_ENV): poetry.lock
+$(VIRTUAL_ENV): poetry.lock .pre-commit-config.yaml git-conventional-commits.yaml
 	@poetry install --with dev --extras redislite
-	@poetry run pre-commit install --hook-type pre-push
+	@poetry run pre-commit install
 	@touch $(VIRTUAL_ENV)
 
 .PHONY: test

@@ -39,6 +39,10 @@ Installation
 
     pip install muffin-redis
 
+Optionally you may install the plugin with redislite: ::
+
+    $ pip install muffin-redis[redislite]
+
 .. _usage:
 
 Usage
@@ -94,6 +98,8 @@ Name                        Default value                           Description
 **jsonify**                 ``False``                               Use json to store/read objects with get/set
 **blocking**                ``True``                                Wait for an available connection
 **timeout**                 ``20``                                  Timeout to get a connection
+**redislite**               ``False``                               Use redislite instead of redis
+**pytest**                  ``True``                                Pytest integration: flush redis before each test
 =========================== ======================================= ===========================
 
 .. _bugtracker:
