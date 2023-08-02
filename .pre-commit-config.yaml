@@ -9,6 +9,7 @@ repos:
   rev: 'v2.6.5'
   hooks:
   - id: conventional-commits
+    args: ["-c", ".git-commits.yaml"]
     stages: ["commit-msg"]
 
 - repo: https://github.com/pre-commit/pre-commit-hooks

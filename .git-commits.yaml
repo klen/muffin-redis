@@ -33,4 +33,4 @@ changelog:
   commitUrl: https://github.com/klen/muffin-redis/commit/%commit%
   commitRangeUrl: https://github.com/klen/muffin-redis/compare/%from%...%to%?diff=split
   issueRegexPattern: "#[0-9]+"
-  issueUrl: https://github.com/klen/muffin/issues/%issue%
+  issueUrl: https://github.com/klen/muffin-redis/issues/%issue%
