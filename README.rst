@@ -99,7 +99,6 @@ Name                        Default value                           Description
 **blocking**                ``True``                                Wait for an available connection
 **timeout**                 ``20``                                  Timeout to get a connection
 **redislite**               ``False``                               Use redislite instead of redis
-**pytest**                  ``True``                                Pytest integration: flush redis before each test
 =========================== ======================================= ===========================
 
 .. _bugtracker:

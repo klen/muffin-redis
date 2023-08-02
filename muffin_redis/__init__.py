@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from contextlib import asynccontextmanager, suppress
+from contextlib import suppress
 from typing import TYPE_CHECKING, Any, ClassVar, Dict, Optional
 
 from asgi_tools._compat import json_dumps, json_loads
@@ -30,7 +30,6 @@ class Plugin(BasePlugin):
         "timeout": 20,
         # ===
         "redislite": False,
-        "pytest": True,
     }
 
     Error = RedisError
@@ -120,9 +119,3 @@ class Plugin(BasePlugin):
                 return json_loads(value)
 
         return value
-
-    @asynccontextmanager
-    async def conftest(self):
-        """Flush redis between tests."""
-        await self.client.flushall()
-        yield
