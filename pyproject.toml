@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "muffin-redis"
-version = "3.6.2"
+version = "3.7.0"
 description = "Redis support for Muffin framework."
 readme = "README.rst"
 license = "MIT"
