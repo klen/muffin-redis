@@ -52,9 +52,6 @@ repos:
   - id: poetry-lock
     args: ["--no-update"]
     stages: ["pre-commit"]
-  - id: poetry-export
-    args: ["-o", "assets/requirements.txt", "--without-hashes"]
-    stages: ["pre-commit"]
 
 - repo: local
   hooks:

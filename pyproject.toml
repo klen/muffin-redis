@@ -25,7 +25,7 @@ classifiers = [
 [tool.poetry.dependencies]
 python = "^3.8"
 muffin = "^0"
-redis = "^4.5.1"
+redis = "*"
 
 # Optional dependencies
 redislite = { version = "*", optional = true }
