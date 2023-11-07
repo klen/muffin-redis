@@ -87,8 +87,9 @@ class Plugin(BasePlugin):
 
     async def shutdown(self):
         """Close the redis pool."""
-        await self.client.close()
-        await self.client.connection_pool.disconnect()
+        client = self.client
+        await client.aclose()
+        await client.connection_pool.disconnect()
         if self.redislite is not None:
             self.redislite.shutdown()
 
