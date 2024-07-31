@@ -76,6 +76,8 @@ class Plugin(BasePlugin):
 
     def __getattr__(self, name):
         """Proxy attribute to self connection."""
+        if name in ("startup", "shutdown", "middleware"):
+            return object.__getattribute__(self, name)
         return getattr(self.client, name)
 
     async def __aenter__(self):
