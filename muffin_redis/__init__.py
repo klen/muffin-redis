@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from contextlib import suppress
-from typing import TYPE_CHECKING, Any, ClassVar, Dict, Optional
+from typing import TYPE_CHECKING, ClassVar, Optional
 
 from asgi_tools._compat import json_dumps, json_loads
 from muffin.plugins import BasePlugin
@@ -18,7 +18,7 @@ class Plugin(BasePlugin):
     """Manage Redis."""
 
     name = "redis"
-    defaults: ClassVar[Dict[str, Any]] = {
+    defaults: ClassVar = {
         "url": "redis://localhost",
         "db": None,
         "password": None,
