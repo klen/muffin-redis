@@ -14,17 +14,17 @@ classifiers = [
   "License :: OSI Approved :: MIT License",
   "Programming Language :: Python",
   "Programming Language :: Python :: 3",
-  "Programming Language :: Python :: 3.9",
   "Programming Language :: Python :: 3.10",
   "Programming Language :: Python :: 3.11",
   "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
   "Framework :: AsyncIO",
 ]
 
 
 [tool.poetry.dependencies]
-python = "^3.9"
-muffin = "^0"
+python = "^3.10"
+muffin = "*"
 redis = "*"
 
 # Optional dependencies
@@ -45,6 +45,7 @@ pytest-mypy = "*"
 [tool.pytest.ini_options]
 log_cli = true
 addopts = "-lxsv"
+filterwarnings = "ignore::UserWarning:redislite.*"
 
 [tool.mypy]
 packages = ["muffin_redis"]
@@ -55,14 +56,14 @@ ignore_missing_imports = true
 [tool.tox]
 legacy_tox_ini = """
 [tox]
-envlist = py39,py310,py311,py312,pypy39
+envlist = py310,py311,py312,py313,pypy310
 
 [testenv]
 deps = -e .[tests]
 commands =
 	pytest --mypy tests.py
 
-[testenv:pypy39]
+[testenv:pypy310]
 deps = -e .[tests]
 commands =
 	pytest tests.py
@@ -71,7 +72,7 @@ commands =
 [tool.ruff]
 fix = true
 line-length = 100
-target-version = "py39"
+target-version = "py310"
 exclude = [".venv", "docs", "examples"]
 
 [tool.ruff.lint]
@@ -95,7 +96,7 @@ ignore = [
 
 [tool.black]
 line-length = 100
-target-version = ["py311"]
+target-version = ["py310", "py311", "py312", "py313"]
 preview = true
 
 [build-system]

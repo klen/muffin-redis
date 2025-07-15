@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from contextlib import suppress
-from typing import TYPE_CHECKING, ClassVar, Optional
+from typing import TYPE_CHECKING, ClassVar
 
 from asgi_tools._compat import json_dumps, json_loads
 from muffin.plugins import BasePlugin
@@ -34,14 +34,15 @@ class Plugin(BasePlugin):
 
     Error = RedisError
 
-    def __init__(self, app: Optional[Application] = None, **options):
+    def __init__(self, app: Application | None = None, **options):
         """Initialize the plugin."""
-        self.__client__: Optional[Redis] = None
+        self.__client__: Redis | None = None
         self.redislite = None
         super().__init__(app, **options)
 
-    async def startup(self):
-        """Setup a redis connection."""
+    def setup(self, app: Application, *, name: str | None = None, **options) -> bool:
+        super().setup(app, name=name, **options)
+
         cfg = self.cfg
 
         params = {
@@ -58,13 +59,15 @@ class Plugin(BasePlugin):
 
         url = cfg.url
         if cfg.redislite:
-            from redislite import Redis as RedisLite
+            from redislite import Redis as RedisLite  # noqa: PLC0415
 
             self.redislite = RedisLite()
-            url = f"unix://{self.redislite.socket_file}"
+            url = f"unix://{self.redislite.socket_file}"  # type: ignore[attr-defined]
 
         pool = pool_cls.from_url(url, max_connections=cfg.poolsize, **params)
         self.__client__ = Redis(connection_pool=pool)
+
+        return True
 
     @property
     def client(self) -> Redis:
@@ -80,27 +83,24 @@ class Plugin(BasePlugin):
             return object.__getattribute__(self, name)
         return getattr(self.client, name)
 
-    async def __aenter__(self):
-        await self.client.__aenter__()
-        return self
-
-    async def __aexit__(self, *args):
-        await self.client.__aexit__(*args)
+    async def startup(self):
+        """Initialize a redis connection."""
+        self.app.logger.info("Connecting to Redis at %s", self.cfg.url)
+        await self.client.initialize()
 
     async def shutdown(self):
         """Close the redis pool."""
+        self.app.logger.info("Disconnecting from Redis at %s", self.cfg.url)
         client = self.client
-        await client.aclose()
+        await client.aclose()  # type: ignore[]
         await client.connection_pool.disconnect()
-        if self.redislite is not None:
-            self.redislite.shutdown()
 
     def set(
         self,
         name: KeyT,
         value: EncodableT,
         *,
-        jsonify: Optional[bool] = None,
+        jsonify: bool | None = None,
         **options,
     ):
         """Store the given value into Redis."""
@@ -109,7 +109,7 @@ class Plugin(BasePlugin):
 
         return self.client.set(name, value, **options)
 
-    async def get(self, key, *, jsonify: Optional[bool] = None, **options):
+    async def get(self, key, *, jsonify: bool | None = None, **options):
         """Decode the value."""
         client = self.client
         value = await client.get(key, **options)

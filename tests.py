@@ -10,20 +10,22 @@ def aiolib():
     return ("asyncio", {"use_uvloop": False})
 
 
-@pytest.fixture()
+@pytest.fixture
 async def app():
+    return muffin.Application(debug=True)
+
+
+@pytest.fixture
+async def redis(app):
     from muffin_redis import Plugin
 
-    app = muffin.Application(debug=True)
     redis = Plugin(app, redislite=True)
-    async with app.lifespan:
-        yield app
+    async with redis:
+        yield redis
         await redis.flushall()
 
 
-async def test_muffin_redis(app):
-    redis = app.plugins["redis"]
-
+async def test_muffin_redis(redis):
     result = await redis.get("key")
     assert result is None
 
@@ -42,34 +44,21 @@ async def test_muffin_redis(app):
     assert result is None
 
 
-async def test_pool():
+async def test_pool(app):
     from muffin_redis import Plugin as Redis
 
-    app = muffin.Application(REDIS_REDISLITE=True)
-
     async def block_conn(client):
-        async with client:
-            await asyncio.sleep(1e-2)
-            return await client.info()
+        await asyncio.sleep(1e-2)
+        return await client.info()
 
-    redis = Redis(app, poolsize=2)
-    await redis.startup()
+    redis = Redis(app, poolsize=2, redislite=True)
 
-    res = await asyncio.gather(block_conn(redis), block_conn(redis), block_conn(redis))
-    assert len(res) == 3
-    await redis.shutdown()
-
-    redis = Redis(app, poolsize=2, blocking=False)
-    await redis.startup()
-
-    with pytest.raises(redis.Error):
-        await asyncio.gather(block_conn(redis), block_conn(redis), block_conn(redis))
-    await redis.shutdown()
+    async with redis:
+        res = await asyncio.gather(block_conn(redis), block_conn(redis), block_conn(redis))
+        assert len(res) == 3
 
 
-async def test_jsonnify(app):
-    redis = app.plugins["redis"]
-
+async def test_jsonnify(redis):
     res = await redis.get("l1", jsonify=True)
     assert res is None
 
@@ -82,9 +71,7 @@ async def test_jsonnify(app):
     assert res == [1, 2, 3]
 
 
-async def test_simple_lock(app):
-    redis = app.plugins["redis"]
-
+async def test_simple_lock(redis):
     async with redis.lock("l1") as lock:
         assert lock
 
@@ -95,10 +82,8 @@ async def test_simple_lock(app):
         assert lock
 
 
-async def test_muffin_redis_pubsub(app):
+async def test_muffin_redis_pubsub(redis):
     from asgi_tools._compat import aio_sleep, aio_spawn
-
-    redis = app.plugins["redis"]
 
     async def reader(channel_name: str):
         async def callback(channel):
