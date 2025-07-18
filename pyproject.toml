@@ -2,7 +2,7 @@
 name = "muffin-redis"
 version = "3.9.0"
 description = "Redis support for Muffin framework."
-readme = "README.rst"
+readme = "README.md"
 license = "MIT"
 authors = ["Kirill Klenov <horneds@gmail.com>"]
 homepage = "https://github.com/klen/muffin-redis"

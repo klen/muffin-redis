@@ -48,8 +48,8 @@ class Plugin(BasePlugin):
         params = {
             "db": cfg.db,
             "password": cfg.password,
-            "decode_responses": cfg.decode_responses,
             "encoding": cfg.encoding,
+            "decode_responses": cfg.decode_responses,
         }
 
         if cfg.blocking:
@@ -63,6 +63,7 @@ class Plugin(BasePlugin):
 
             self.redislite = RedisLite()
             url = f"unix://{self.redislite.socket_file}"  # type: ignore[attr-defined]
+            cfg.update_from_dict({"url": url})
 
         pool = pool_cls.from_url(url, max_connections=cfg.poolsize, **params)
         self.__client__ = Redis(connection_pool=pool)
