@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from contextlib import suppress
+from contextlib import asynccontextmanager, suppress
 from typing import TYPE_CHECKING, ClassVar
 
 from asgi_tools._compat import json_dumps, json_loads
@@ -10,6 +10,8 @@ from muffin.plugins import BasePlugin
 from redis.asyncio import BlockingConnectionPool, ConnectionPool, Redis, RedisError
 
 if TYPE_CHECKING:
+    from collections.abc import AsyncGenerator
+
     from muffin import Application
     from redis.typing import EncodableT, KeyT
 
@@ -123,3 +125,29 @@ class Plugin(BasePlugin):
                 return json_loads(value)
 
         return value
+
+    @asynccontextmanager
+    async def lock(
+        self,
+        name: KeyT,
+        *,
+        timeout: float | None = 30,
+        blocking: bool = True,
+        blocking_timeout: float | None = None,
+        sleep: float = 0.1,
+    ) -> AsyncGenerator[bool]:
+        """Acquire and release a Redis lock with one async context manager."""
+        lock = self.client.lock(
+            name,
+            timeout=timeout,
+            sleep=sleep,
+            blocking_timeout=blocking_timeout,
+        )
+        acquired = await lock.acquire(blocking=blocking)
+
+        try:
+            yield acquired
+        finally:
+            if acquired:
+                with suppress(RedisError):
+                    await lock.release()

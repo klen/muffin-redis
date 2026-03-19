@@ -74,6 +74,17 @@ async def test_simple_lock(redis):
         assert lock
 
 
+async def test_lock_context(redis):
+    async with redis.lock("ctx-lock", timeout=1, blocking=False) as acquired:
+        assert acquired is True
+
+        async with redis.lock("ctx-lock", timeout=1, blocking=False) as nested:
+            assert nested is False
+
+    async with redis.lock("ctx-lock", timeout=1, blocking=False) as acquired:
+        assert acquired is True
+
+
 async def test_muffin_redis_pubsub(redis):
     async def reader(channel_name: str):
         async def callback(channel):
