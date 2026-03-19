@@ -1,12 +1,11 @@
-[tool.poetry]
+[project]
 name = "muffin-redis"
 version = "3.9.1"
 description = "Redis support for Muffin framework."
+authors = [{ name = "Kirill Klenov", email = "horneds@gmail.com" }]
+requires-python = ">=3.10,<4"
 readme = "README.md"
 license = "MIT"
-authors = ["Kirill Klenov <horneds@gmail.com>"]
-homepage = "https://github.com/klen/muffin-redis"
-repository = "https://github.com/klen/muffin-redis"
 keywords = ["redis", "muffin", "asgi", "asyncio"]
 classifiers = [
   "Development Status :: 5 - Production/Stable",
@@ -18,61 +17,45 @@ classifiers = [
   "Programming Language :: Python :: 3.11",
   "Programming Language :: Python :: 3.12",
   "Programming Language :: Python :: 3.13",
+  "Programming Language :: Python :: 3.14",
   "Framework :: AsyncIO",
 ]
+dependencies = ["muffin", "redis"]
 
-
-[tool.poetry.dependencies]
-python = "^3.10"
-muffin = "*"
-redis = "*"
-
-# Optional dependencies
-redislite = { version = "*", optional = true }
-
-[tool.poetry.extras]
+[project.optional-dependencies]
 redislite = ["redislite"]
 
-[tool.poetry.group.dev.dependencies]
-ipdb = "*"
-ruff = "*"
-black = "*"
-pytest = "*"
-pre-commit = "*"
-pytest-aio = "*"
-pytest-mypy = "*"
+[project.urls]
+Homepage = "https://github.com/klen/muffin-redis"
+Repository = "https://github.com/klen/muffin-redis"
+
+[dependency-groups]
+dev = ["ipdb", "ruff", "pyrefly", "pytest", "pre-commit", "pytest-aio"]
+
+[tool.uv]
+default-groups = "all"
+
+[tool.uv.build-backend]
+module-name = "muffin_redis"
+module-root = ""
+
+[build-system]
+requires = ["uv_build>=0.10.2,<0.11.0"]
+build-backend = "uv_build"
 
 [tool.pytest.ini_options]
 log_cli = true
-addopts = "-lxsv"
+addopts = "-lxsv tests.py"
 filterwarnings = "ignore::UserWarning:redislite.*"
 
-[tool.mypy]
-packages = ["muffin_redis"]
-install_types = true
-non_interactive = true
-ignore_missing_imports = true
-
-[tool.tox]
-legacy_tox_ini = """
-[tox]
-envlist = py310,py311,py312,py313,pypy310
-
-[testenv]
-deps = -e .[tests]
-commands =
-	pytest --mypy tests.py
-
-[testenv:pypy310]
-deps = -e .[tests]
-commands =
-	pytest tests.py
-"""
+[tool.pyrefly]
+project-includes = ["muffin_redis"]
 
 [tool.ruff]
 fix = true
 line-length = 100
 target-version = "py310"
+include = ["*.py", "muffin_redis/**/*.py"]
 exclude = [".venv", "docs", "examples"]
 
 [tool.ruff.lint]
@@ -93,12 +76,3 @@ ignore = [
   "A003",
   "TRY003",
 ]
-
-[tool.black]
-line-length = 100
-target-version = ["py310", "py311", "py312", "py313"]
-preview = true
-
-[build-system]
-requires = ["poetry-core>=1.0.0"]
-build-backend = "poetry.core.masonry.api"

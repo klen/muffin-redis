@@ -20,21 +20,21 @@ jobs:
 
     steps:
       - uses: actions/checkout@main
-      - name: Install poetry
-        run: pipx install poetry
 
-      - name: Set up Python
-        uses: actions/setup-python@main
+      - name: Install uv
+        uses: astral-sh/setup-uv@main
         with:
-          cache: poetry
+          enable-cache: true
+          python-version: ${{ matrix.python-version }}
 
       - name: Setup dependencies
-        run: poetry install --with dev --extras redislite
+        run: uv sync --locked --all-extras --dev
 
-      - name: Lint the code
-        run: |
-          poetry run mypy
-          poetry run ruff check muffin_redis
+      - name: Check typing
+        run: uv run pyrefly check
+
+      - name: Check code
+        run: uv run ruff check
 
       - name: Test with pytest
-        run: poetry run pytest tests.py
+        run: uv run pytest
