@@ -1,13 +1,11 @@
 import asyncio
+import time
 
 import muffin
 import pytest
+from asgi_tools._compat import aio_sleep, aio_spawn
 
-
-@pytest.fixture(scope="session")
-def aiolib():
-    """Disable uvloop for tests."""
-    return ("asyncio", {"use_uvloop": False})
+from muffin_redis import Plugin
 
 
 @pytest.fixture
@@ -17,8 +15,6 @@ async def app():
 
 @pytest.fixture
 async def redis(app):
-    from muffin_redis import Plugin
-
     redis = Plugin(app, redislite=True)
     async with redis:
         yield redis
@@ -33,8 +29,6 @@ async def test_muffin_redis(redis):
     result = await redis.get("key")
     assert result == "value"
 
-    import time
-
     await redis.set("dict", {"now": time.time()}, jsonify=True)
     result = await redis.get("dict", jsonify=True)
     assert result
@@ -45,13 +39,11 @@ async def test_muffin_redis(redis):
 
 
 async def test_pool(app):
-    from muffin_redis import Plugin as Redis
-
     async def block_conn(client):
         await asyncio.sleep(1e-2)
         return await client.info()
 
-    redis = Redis(app, poolsize=2, redislite=True)
+    redis = Plugin(app, poolsize=2, redislite=True)
 
     async with redis:
         res = await asyncio.gather(block_conn(redis), block_conn(redis), block_conn(redis))
@@ -83,8 +75,6 @@ async def test_simple_lock(redis):
 
 
 async def test_muffin_redis_pubsub(redis):
-    from asgi_tools._compat import aio_sleep, aio_spawn
-
     async def reader(channel_name: str):
         async def callback(channel):
             while True:
