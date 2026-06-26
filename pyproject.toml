@@ -22,7 +22,7 @@ classifiers = [
 dependencies = ["muffin", "redis"]
 
 [project.optional-dependencies]
-fakeredis = ["fakeredis"]
+fake = ["fakeredis"]
 
 [project.urls]
 Homepage = "https://github.com/klen/muffin-redis"

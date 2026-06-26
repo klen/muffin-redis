@@ -297,7 +297,7 @@ dependencies = [
 ]
 
 [package.optional-dependencies]
-fakeredis = [
+fake = [
     { name = "fakeredis" },
 ]
 
@@ -313,11 +313,11 @@ dev = [
 
 [package.metadata]
 requires-dist = [
-    { name = "fakeredis", marker = "extra == 'fakeredis'" },
+    { name = "fakeredis", marker = "extra == 'fake'" },
     { name = "muffin" },
     { name = "redis" },
 ]
-provides-extras = ["fakeredis"]
+provides-extras = ["fake"]
 
 [package.metadata.requires-dev]
 dev = [
