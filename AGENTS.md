@@ -164,6 +164,13 @@ uv run pytest -k jsonnify
 - Allowed types: `build`, `chore`, `docs`, `feat`, `fix`, `merge`, `ops`, `perf`, `refactor`,
   `style`, `test`.
 
+## Changelog
+
+- Maintain `CHANGELOG.md` following [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
+- For every user-visible change (features, fixes, refactors, breaking changes), add an entry
+  under `[Unreleased]` in the appropriate section (`Added`, `Changed`, `Fixed`, `Removed`).
+- When a release is cut, move the `[Unreleased]` entries under a new version heading.
+
 ## Release Process
 
 - Release automation is defined in `Makefile` (`make release`, `make patch`, `make minor`,
@@ -189,6 +196,7 @@ uv run pytest
 
 1. Sync dependencies with `uv`.
 2. Make minimal, targeted changes.
-3. Run format + lint + type checks.
-4. Run relevant tests (single during iteration, full before finish).
-5. Keep commit messages conventional.
+3. Update `CHANGELOG.md` under `[Unreleased]` for user-visible changes.
+4. Run format + lint + type checks.
+5. Run relevant tests (single during iteration, full before finish).
+6. Keep commit messages conventional.

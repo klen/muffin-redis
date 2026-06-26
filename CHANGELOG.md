@@ -7,6 +7,12 @@ and this project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.ht
 
 ## [Unreleased]
 
+### Changed
+- Replaced `redislite` with `fakeredis` for testing without a real Redis server.
+- Split plugin code into `plugin.py` (main plugin) and `fake.py` (FakeRedis helpers).
+- The `redislite` config option is removed; use `fake: true` instead.
+- Added fake lock support via `SET NX` + `DEL` (no Lua dependency).
+
 ## [3.11.0] - 2026-03-19
 
 ### Added
