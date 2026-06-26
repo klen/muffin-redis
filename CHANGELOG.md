@@ -7,12 +7,19 @@ and this project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.ht
 
 ## [Unreleased]
 
+## [4.0.0] - 2026-06-26
+
+### Added
+- Fake lock support via `SET NX` + `DEL` (no Lua dependency) for `fake: true` mode.
+
 ### Changed
 - Replaced `redislite` with `fakeredis` for testing without a real Redis server.
 - Split plugin code into `plugin.py` (main plugin) and `fake.py` (FakeRedis helpers).
-- The `redislite` config option is removed; use `fake: true` instead.
-- Added fake lock support via `SET NX` + `DEL` (no Lua dependency).
 - Raised minimum Python version from 3.10 to 3.11.
+
+### Removed
+- `redislite` config option and dependency. Use `fake: true` with `fakeredis` instead.
+- Python 3.10 support.
 
 ## [3.11.0] - 2026-03-19
 
