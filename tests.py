@@ -15,7 +15,7 @@ async def app():
 
 @pytest.fixture
 async def redis(app):
-    redis = Plugin(app, redislite=True)
+    redis = Plugin(app, fake=True)
     async with redis:
         yield redis
         await redis.flushall()
@@ -41,9 +41,9 @@ async def test_muffin_redis(redis):
 async def test_pool(app):
     async def block_conn(client):
         await asyncio.sleep(1e-2)
-        return await client.info()
+        return await client.ping()
 
-    redis = Plugin(app, poolsize=2, redislite=True)
+    redis = Plugin(app, poolsize=2, fake=True)
 
     async with redis:
         res = await asyncio.gather(block_conn(redis), block_conn(redis), block_conn(redis))
@@ -89,7 +89,7 @@ async def test_muffin_redis_pubsub(redis):
     async def reader(channel_name: str):
         async def callback(channel):
             while True:
-                msg = await channel.get_message(ignore_subscribe_messages=True)
+                msg = await channel.get_message(ignore_subscribe_messages=True, timeout=1.0)
                 if msg:
                     return msg["data"]
 

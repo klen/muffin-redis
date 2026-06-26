@@ -23,7 +23,7 @@ classifiers = [
 dependencies = ["muffin", "redis"]
 
 [project.optional-dependencies]
-redislite = ["redislite"]
+fakeredis = ["fakeredis"]
 
 [project.urls]
 Homepage = "https://github.com/klen/muffin-redis"
@@ -46,7 +46,7 @@ build-backend = "uv_build"
 [tool.pytest.ini_options]
 log_cli = true
 addopts = "-lxsv tests.py"
-filterwarnings = "ignore::UserWarning:redislite.*"
+filterwarnings = "ignore::UserWarning:fakeredis.*"
 
 [tool.pyrefly]
 project-includes = ["muffin_redis"]

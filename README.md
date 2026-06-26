@@ -11,7 +11,7 @@
 ## Features
 
 - Built on `redis.asyncio` client.
-- Optional support for `redislite` with Unix socket configuration.
+- Optional support for `fakeredis` for testing without a real Redis server.
 - JSON serialization support
 - Automatic connection pool management (blocking or non-blocking).
 - Simple `get()` / `set()` with optional `jsonify` flag.
@@ -29,10 +29,10 @@ Install using pip:
 pip install muffin-redis
 ```
 
-Optionally with `redislite`:
+Optionally with `fakeredis`:
 
 ```bash
-pip install muffin-redis[redislite]
+pip install muffin-redis[fakeredis]
 ```
 
 ## Usage
@@ -77,7 +77,7 @@ Under the hood, **Muffin-Redis** uses [aioredis](https://github.com/aio-libs/aio
 | `jsonify`          | `False`               | Automatically encode/decode JSON with get/set                |
 | `blocking`         | `True`                | Use a blocking connection pool                               |
 | `timeout`          | `20`                  | Timeout in seconds for getting a connection                  |
-| `redislite`        | `False`               | Enable [redislite](https://github.com/yahoo/redislite) usage |
+| `fake`             | `False`               | Use [fakeredis](https://github.com/cunla/fakeredis) instead of a real Redis server |
 
 ## Bug Tracker
 
