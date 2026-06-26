@@ -60,20 +60,21 @@ exclude = [".venv", "docs", "examples"]
 [tool.ruff.lint]
 select = ["ALL"]
 ignore = [
-  "D",
-  "UP",
+  "A003",
+  "ASYNC109",
   "ANN",
+  "D",
   "DJ",
   "EM",
-  "RSE",
-  "SLF",
-  "RET",
-  "S101",
-  "PLR2004",
-  "PLR0912",
   "N804",
-  "A003",
+  "PLR0912",
+  "PLR2004",
+  "RET",
+  "RSE",
+  "S101",
+  "SLF",
   "TRY003",
+  "UP",
 ]
 
 [tool.bumpversion]
