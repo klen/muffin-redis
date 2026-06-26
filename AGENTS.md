@@ -176,10 +176,10 @@ uv run pytest -k jsonnify
 - Release automation is defined in `Makefile` (`make release`, `make patch`, `make minor`,
   `make major`).
 - `make patch|minor|major` calls `make release VERSION=<part>`.
-- The flow checks out and pulls `master` and `develop`, bumps version with
+- The flow checks out and pulls `main` and `develop`, bumps version with
   `uv version --bump`, updates `uv.lock`, creates a `build(release): <version>` commit,
   and creates a git tag.
-- It then merges `develop -> master`, then `master -> develop`, and pushes branches and tags.
+- It then merges `develop -> main`, then `main -> develop`, and pushes branches and tags.
 - Use release commands only when you intentionally want branch switching, merge commits,
   tagging, and remote pushes.
 
