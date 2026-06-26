@@ -38,44 +38,50 @@ lint: $(VIRTUAL_ENV)
 #  Bump version
 # ==============
 
-VERSION	?= minor
-MAIN_BRANCH = main
-STAGE_BRANCH = develop
+RELEASE	?= minor
+MANAGER	?= uv
 
 .PHONY: release
 # target: release - Bump version
 release:
-	git checkout $(MAIN_BRANCH)
-	git pull
-	git checkout $(STAGE_BRANCH)
-	git pull
-	uv version --bump $(VERSION)
-	uv lock
-	@CVER="$$(uv version --short)"; \
+	@echo "Starting release process (bumping $(RELEASE) version)..."
+	@git checkout main
+	@git pull
+	@git checkout develop
+	@git pull
+	@echo "Bumping version and creating release commit and tag..."
+	@uvx bump-my-version bump $(RELEASE)
+	@echo "Version bumped to `$(MANAGER) version --short`."
+	@$(MANAGER) lock
+	@echo "Committing version bump and creating tag..."
+	@VERSION=`$(MANAGER) version --short`; \
 		{ \
-			printf 'build(release): %s\n\n' "$$CVER"; \
+			printf 'build(release): %s\n\n' "$$VERSION"; \
 			printf 'Changes:\n\n'; \
-			git log --oneline --pretty=format:'%s [%an]' $(MAIN_BRANCH)..$(STAGE_BRANCH) | grep -Evi 'github|^Merge' || true; \
-		} | git commit -a -F -; \
-		git tag -a "$$CVER" -m "$$CVER";
-	git checkout $(MAIN_BRANCH)
-	git merge $(STAGE_BRANCH)
-	git checkout $(STAGE_BRANCH)
-	git merge $(MAIN_BRANCH)
-	@git -c push.followTags=false push origin $(STAGE_BRANCH) $(MAIN_BRANCH)
-	@git push --tags origin
-	@echo "Release process complete for `uv version --short`"
+			git log --oneline --pretty=format:'%s [%an]' main..develop | grep -Evi 'github|^Merge' || true; \
+		} | git commit -a -F -
+	@echo "Merging changes between branches..."
+	@git checkout main
+	@git merge --ff-only develop
+	@VERSION=`$(MANAGER) version --short`; \
+		git push origin main; \
+		git tag -a "$$VERSION" -m "$$VERSION"; \
+		git push origin "$$VERSION"
+	@git checkout develop
+	@git merge --ff-only main
+	@git push origin develop
+	@echo "Release process complete for `$(MANAGER) version --short`"
 
 .PHONY: minor
 minor: release
 
 .PHONY: patch
 patch:
-	make release VERSION=patch
+	make release RELEASE=patch
 
 .PHONY: major
 major:
-	make release VERSION=major
+	make release RELEASE=major
 
 version v:
 	uv version --short
