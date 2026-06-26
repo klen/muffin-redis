@@ -289,7 +289,7 @@ wheels = [
 
 [[package]]
 name = "muffin-redis"
-version = "3.11.0"
+version = "4.0.0"
 source = { editable = "." }
 dependencies = [
     { name = "muffin" },
