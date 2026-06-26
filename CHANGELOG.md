@@ -12,6 +12,7 @@ and this project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.ht
 - Split plugin code into `plugin.py` (main plugin) and `fake.py` (FakeRedis helpers).
 - The `redislite` config option is removed; use `fake: true` instead.
 - Added fake lock support via `SET NX` + `DEL` (no Lua dependency).
+- Raised minimum Python version from 3.10 to 3.11.
 
 ## [3.11.0] - 2026-03-19
 

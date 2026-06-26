@@ -3,7 +3,7 @@ name = "muffin-redis"
 version = "3.11.0"
 description = "Redis support for Muffin framework."
 authors = [{ name = "Kirill Klenov", email = "horneds@gmail.com" }]
-requires-python = ">=3.10,<4"
+requires-python = ">=3.11,<4"
 readme = "README.md"
 license = "MIT"
 keywords = ["redis", "muffin", "asgi", "asyncio"]
@@ -13,7 +13,6 @@ classifiers = [
   "License :: OSI Approved :: MIT License",
   "Programming Language :: Python",
   "Programming Language :: Python :: 3",
-  "Programming Language :: Python :: 3.10",
   "Programming Language :: Python :: 3.11",
   "Programming Language :: Python :: 3.12",
   "Programming Language :: Python :: 3.13",
@@ -54,7 +53,7 @@ project-includes = ["muffin_redis"]
 [tool.ruff]
 fix = true
 line-length = 100
-target-version = "py310"
+target-version = "py311"
 include = ["*.py", "muffin_redis/**/*.py"]
 exclude = [".venv", "docs", "examples"]
 

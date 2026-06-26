@@ -5,7 +5,7 @@ Repository guide for agentic coding assistants working in `muffin-redis`.
 ## Project Snapshot
 
 - Package: `muffin-redis`
-- Python: `>=3.10,<4`
+- Python: `>=3.11,<4`
 - Build backend: `uv_build`
 - Main implementation: `muffin_redis/__init__.py`
 - Tests: `tests.py`
@@ -77,7 +77,7 @@ Pipeline commands:
 3. `uv run ruff check`
 4. `uv run pytest`
 
-Compatibility target: Python `3.10`, `3.11`, `3.12`, `3.13`, `3.14`.
+Compatibility target: Python `3.11`, `3.12`, `3.13`, `3.14`.
 
 ## Code Style Guidelines
 
@@ -85,7 +85,7 @@ Compatibility target: Python `3.10`, `3.11`, `3.12`, `3.13`, `3.14`.
 
 - Ruff is authoritative for formatting and linting.
 - Config lives in `pyproject.toml` under `[tool.ruff]` and `[tool.ruff.lint]`.
-- Line length: `100`; target version: `py310`.
+- Line length: `100`; target version: `py311`.
 - Lint set is strict (`select = ["ALL"]`) with explicit ignore list.
 - After edits, run `uv run ruff format` then `uv run ruff check`.
 
@@ -96,7 +96,7 @@ Compatibility target: Python `3.10`, `3.11`, `3.12`, `3.13`, `3.14`.
 - Separate import groups with a single blank line.
 - Use `TYPE_CHECKING` for typing-only imports.
 - Use local inline imports only when useful for optional dependency behavior
-  (example: lazy `redislite` import in plugin setup).
+  (example: lazy `fakeredis` import in plugin setup).
 
 ### Typing
 
