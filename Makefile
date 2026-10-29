@@ -1,16 +1,26 @@
 PACKAGE = muffin_redis
 VIRTUAL_ENV ?= .venv
 
+all: $(VIRTUAL_ENV)
+
+.PHONY: help
+# target: help - Display callable targets
+help:
+	@egrep "^# target:" [Mm]akefile
+
+.PHONY: clean
+# target: clean - Remove build artifacts
+clean:
+	rm -rf build/ dist/ *.egg-info
+	find $(CURDIR) -name "*.py[co]" -delete
+	find $(CURDIR) -name "*.orig" -delete
+	find $(CURDIR)/$(PACKAGE) -name "__pycache__" | xargs rm -rf
+
 # =============
 #  Development
 # =============
-#
-clean:
-	rm -rf build/ dist/ docs/_build *.egg-info
-	find $(CURDIR) -name "*.py[co]" -delete
-	find $(CURDIR) -name "*.orig" -delete
-	find $(CURDIR)/$(MODULE) -name "__pycache__" | xargs rm -rf
 
+# `--all-extras` is required: the tests need `fakeredis` from the `fake` extra.
 $(VIRTUAL_ENV): pyproject.toml .pre-commit-config.yaml
 	@uv sync --all-extras
 	@uv run pre-commit install
@@ -33,6 +43,12 @@ types: $(VIRTUAL_ENV)
 lint: $(VIRTUAL_ENV)
 	@make types
 	@uv run ruff check
+
+.PHONY: outdated
+# target: outdated - Check for outdated dependencies
+outdated:
+	@echo "Checking for outdated dependencies..."
+	@uv tree --depth 1 --outdated | grep 'latest' || echo "All dependencies are up to date."
 
 # ==============
 #  Bump version

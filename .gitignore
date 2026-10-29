@@ -1,4 +1,11 @@
 *.py[cod]
+__pycache__/
+
+# Local caches
+.venv
+.mypy_cache
+.pytest_cache
+.ruff_cache
 
 # C extensions
 *.so
