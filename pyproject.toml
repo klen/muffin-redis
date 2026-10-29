@@ -17,6 +17,7 @@ classifiers = [
   "Programming Language :: Python :: 3.12",
   "Programming Language :: Python :: 3.13",
   "Programming Language :: Python :: 3.14",
+  "Programming Language :: Python :: 3.15",
   "Framework :: AsyncIO",
 ]
 dependencies = ["muffin", "redis"]
@@ -29,7 +30,14 @@ Homepage = "https://github.com/klen/muffin-redis"
 Repository = "https://github.com/klen/muffin-redis"
 
 [dependency-groups]
-dev = ["ipdb", "ruff", "pyrefly", "pytest", "pre-commit", "pytest-aio"]
+dev = [
+  "pytest",
+  "pytest-aio[curio, trio]",
+  "ruff",
+  "pyrefly",
+  "pre-commit",
+  "tox",
+]
 
 [tool.uv]
 default-groups = "all"
@@ -50,8 +58,19 @@ filterwarnings = "ignore::UserWarning:fakeredis.*"
 [tool.pyrefly]
 project-includes = ["muffin_redis"]
 
+[tool.tox]
+legacy_tox_ini = """
+[tox]
+envlist = py311,py312,py313,py314,py315,pypy311
+
+[testenv]
+allowlist_externals = uv,pytest
+commands =
+  uv pip install --system -e .[dev,fake]
+	pytest
+"""
+
 [tool.ruff]
-fix = true
 line-length = 100
 target-version = "py311"
 include = ["*.py", "muffin_redis/**/*.py"]
@@ -61,18 +80,25 @@ exclude = [".venv", "docs", "examples"]
 select = ["ALL"]
 ignore = [
   "A003",
-  "ASYNC109",
   "ANN",
+  "ASYNC109",
+  "ARG",
+  "COM",
   "D",
   "DJ",
   "EM",
-  "N804",
+  "FA100",
+  "FIX",
+  "N",
+  "PLC0415",
   "PLR0912",
   "PLR2004",
   "RET",
   "RSE",
+  "RUF012",
   "S101",
   "SLF",
+  "TD",
   "TRY003",
   "UP",
 ]

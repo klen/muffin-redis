@@ -16,7 +16,7 @@ if TYPE_CHECKING:
 
 def create_fake_client(*, decode_responses: bool = True):
     """Create a FakeRedis client instance."""
-    from fakeredis.aioredis import FakeRedis  # noqa: PLC0415
+    from fakeredis.aioredis import FakeRedis
 
     return FakeRedis(decode_responses=decode_responses)
 
