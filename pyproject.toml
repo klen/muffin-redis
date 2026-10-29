@@ -47,7 +47,7 @@ module-name = "muffin_redis"
 module-root = ""
 
 [build-system]
-requires = ["uv_build>=0.10.2,<0.11.0"]
+requires = ["uv_build>=0.13.6,<0.14.0"]
 build-backend = "uv_build"
 
 [tool.pytest.ini_options]
@@ -66,7 +66,7 @@ envlist = py311,py312,py313,py314,py315,pypy311
 [testenv]
 allowlist_externals = uv,pytest
 commands =
-  uv pip install --system -e .[fake] --group dev
+  uv pip install -e .[fake] --group dev
 	pytest
 """
 
