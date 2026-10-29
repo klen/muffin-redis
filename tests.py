@@ -8,6 +8,12 @@ from asgi_tools._compat import aio_sleep, aio_spawn
 from muffin_redis import Plugin
 
 
+# Pin the suite to asyncio: `redis.asyncio` cannot run under trio/curio
+@pytest.fixture(scope="module")
+def aiolib():
+    return "asyncio", {"loop_factory": None}
+
+
 @pytest.fixture
 async def app():
     return muffin.Application(debug=True)
@@ -82,6 +88,19 @@ async def test_lock_context(redis):
             assert nested is False
 
     async with redis.lock("ctx-lock", timeout=1, blocking=False) as acquired:
+        assert acquired is True
+
+
+async def test_lock_blocking_timeout(redis):
+    async with redis.lock("blocking", timeout=1) as acquired:
+        assert acquired is True
+
+        started = time.monotonic()
+        async with redis.lock("blocking", blocking_timeout=0.2) as waited:
+            assert waited is False
+        assert time.monotonic() - started >= 0.2
+
+    async with redis.lock("blocking") as acquired:
         assert acquired is True
 
 

@@ -7,13 +7,14 @@ Repository guide for agentic coding assistants working in `muffin-redis`.
 - Package: `muffin-redis`
 - Python: `>=3.11,<4`
 - Build backend: `uv_build`
-- Main implementation: `muffin_redis/__init__.py`
+- Main implementation: `muffin_redis/plugin.py` (fake mode helpers: `muffin_redis/fake.py`)
 - Tests: `tests.py`
-- Core tools: `uv`, `pytest`, `ruff`, `pyrefly`, `pre-commit`
+- Core tools: `uv`, `pytest`, `pytest-aio`, `ruff`, `pyrefly`, `pre-commit`, `tox`
 
 ## Environment Setup
 
-Use `uv` for all local workflows.
+Use `uv` for all local workflows. Tests need `fakeredis` from the `fake` extra, so always sync
+with `--all-extras`.
 
 ```bash
 uv sync --all-extras --dev
@@ -43,6 +44,8 @@ uv run ruff check
 uv run ruff format
 # Run all hooks
 uv run pre-commit run --all-files
+# Alternative tox environments (py311-py315, pypy311)
+uv run tox -e py315
 # Build artifacts
 uv build
 ```
@@ -50,9 +53,12 @@ uv build
 Make targets:
 
 ```bash
+make help      # list targets
+make           # uv sync + pre-commit install
 make test      # same as make t
 make lint      # runs make types + ruff check
 make types     # runs pyrefly check
+make outdated  # check outdated dependencies
 make clean
 
 # Release helpers
@@ -77,7 +83,7 @@ Pipeline commands:
 3. `uv run ruff check`
 4. `uv run pytest`
 
-Compatibility target: Python `3.11`, `3.12`, `3.13`, `3.14`.
+Compatibility target: Python `3.11`, `3.12`, `3.13`, `3.14`, `3.15` (plus `pypy311` via tox).
 
 ## Code Style Guidelines
 

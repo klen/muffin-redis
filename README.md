@@ -15,11 +15,12 @@
 - JSON serialization support
 - Automatic connection pool management (blocking or non-blocking).
 - Simple `get()` / `set()` with optional `jsonify` flag.
+- Async locks with automatic release.
 - Lifecycle support: `startup` and `shutdown` integrate with Muffin app lifecycle.
 
 ## Requirements
 
-- Python >= 3.11
+- Python >= 3.11 (tested on 3.11 - 3.15)
 
 ## Installation
 
@@ -32,7 +33,7 @@ pip install muffin-redis
 Optionally with `fakeredis`:
 
 ```bash
-pip install muffin-redis[fakeredis]
+pip install muffin-redis[fake]
 ```
 
 ## Usage
@@ -46,38 +47,93 @@ from muffin_redis import Plugin as Redis
 app = Application('example')
 
 # Initialize the plugin
-redis = Redis(address='redis://localhost')
+redis = Redis(url='redis://localhost')
 redis.setup(app)
 ```
+
+Only the options from the table below are read from the configuration, anything else is ignored
+(so a mistyped option name silently falls back to its default). Everything else is passed to
+`redis.asyncio.Redis`, so the [redis-py documentation](https://redis.readthedocs.io/) applies to
+any command or option not listed here.
 
 You can now use Redis in your routes:
 
 ```python
 @app.route('/some_url', methods=['POST'])
 async def some_method(request):
-    value = await redis.get('key')
+    value = await redis.get('key', jsonify=True)
     if value is None:
-        value = ...  # Do some work
-        await redis.set('key', value, expire=60)
+        value = {'some': 'value'}  # Do some work
+        await redis.set('key', value, jsonify=True, ex=60)
     return value
 ```
-
-Under the hood, **Muffin-Redis** uses [aioredis](https://github.com/aio-libs/aioredis) for asynchronous Redis support.
 
 ## Configuration Options
 
 | Name               | Default               | Description                                                  |
 | ------------------ | --------------------- | ------------------------------------------------------------ |
 | `url`              | `"redis://localhost"` | Redis connection URL                                         |
-| `db`               | `None`                | Redis DB index                                               |
+| `db`               | `None`                | Redis DB index (`None` keeps the server default, `0`)        |
 | `password`         | `None`                | Redis password                                               |
 | `encoding`         | `"utf-8"`             | Encoding used by the client                                  |
-| `poolsize`         | `10`                  | Max pool size (set `0` to disable pooling)                   |
+| `poolsize`         | `10`                  | Max pool size (`0` means no limit and lets redis-py use its default of `100`) |
 | `decode_responses` | `True`                | Whether to decode binary responses                           |
 | `jsonify`          | `False`               | Automatically encode/decode JSON with get/set                |
 | `blocking`         | `True`                | Use a blocking connection pool                               |
-| `timeout`          | `20`                  | Timeout in seconds for getting a connection                  |
+| `timeout`          | `20`                  | Seconds to wait for a free connection (blocking pool only)   |
 | `fake`             | `False`               | Use [fakeredis](https://github.com/cunla/fakeredis) instead of a real Redis server |
+
+## API
+
+### `client`
+
+Property returning the underlying `redis.asyncio.Redis` instance. Raises `RuntimeError` when the
+plugin is not started yet.
+
+### `set(name, value, *, jsonify=None, **options)`
+
+Coroutine storing `value` under `name` and returning the client's result (`True` on success).
+`jsonify` falls back to the `jsonify` config option. `**options` are passed to the Redis `SET`
+command, e.g. `ex=60` (expire in seconds), `px=...`, `nx=True`, `xx=True`. Note that the keyword is
+`ex`, not `expire`.
+
+### `get(key, *, jsonify=None, **options)`
+
+Coroutine returning the stored value, or `None` when the key does not exist. With `jsonify` enabled
+the value (a `str` because `decode_responses` defaults to `True`) is parsed as JSON; values that are
+not valid JSON are returned unchanged.
+
+### `lock(name, *, timeout=30, blocking=True, blocking_timeout=None, sleep=0.1)`
+
+Async context manager yielding `True` when the lock was acquired and `False` otherwise. The lock is
+released on a normal or exceptional exit (and only if it was acquired).
+
+- `timeout` — lock lifetime in seconds; the lock expires automatically, `None` disables expiry.
+- `blocking` — wait for a busy lock instead of returning `False` immediately.
+- `blocking_timeout` — how long a blocking acquire waits before giving up (`None` waits until the
+  current holder's `timeout` expires).
+- `sleep` — delay between acquire attempts.
+
+```python
+async with redis.lock('reports', timeout=10) as acquired:
+    if acquired:
+        ...  # only one worker at a time
+```
+
+With `fake=True` the lock is emulated with `SET NX`/`DEL` polling, so it has no Lua dependency and
+no distributed guarantees.
+
+### Everything else
+
+Unknown attributes are proxied to the client, so regular Redis commands work directly:
+
+```python
+await redis.hgetall('some-hash')
+await redis.publish('chan:1', 'test')
+```
+
+Inside an application the plugin is started and stopped with the app lifecycle; standalone it can be
+used as an async context manager (`async with redis: ...`).
 
 ## Bug Tracker
 
