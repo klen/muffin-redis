@@ -7,6 +7,22 @@ and this project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.ht
 
 ## [Unreleased]
 
+### Added
+- Python 3.15 support (classifier, CI matrix, tox environments).
+- README section documenting the public API: `client`, `set`, `get`, `lock` and attribute proxying.
+- `tox` environments `py311`-`py315` and `pypy311`.
+
+### Changed
+- Dev tooling aligned with the `muffin-rest` reference (dependency group, ruff ignore list,
+  pre-commit hook versions, Makefile targets).
+- README references `redis.asyncio` instead of the archived `aioredis` project.
+- Tests are pinned to asyncio: `redis.asyncio` does not work under trio/curio.
+
+### Fixed
+- README documented a non-existent `address` option, the wrong extra name (`fakeredis` instead of
+  `fake`), `expire=` instead of the supported `ex=` argument and the wrong `poolsize=0` semantics.
+- `make clean` removed `__pycache__` from an undefined `$(MODULE)` directory.
+
 ## [4.0.0] - 2026-06-26
 
 ### Added
