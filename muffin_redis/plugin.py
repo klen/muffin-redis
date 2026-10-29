@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from contextlib import asynccontextmanager, suppress
 from typing import TYPE_CHECKING, ClassVar
+from urllib.parse import urlsplit
 
 from asgi_tools._compat import json_dumps, json_loads
 from muffin.plugins import BasePlugin
@@ -16,6 +17,12 @@ if TYPE_CHECKING:
 
     from muffin import Application
     from redis.typing import EncodableT, KeyT
+
+
+def _address(url: str) -> str:
+    """Return the Redis address without credentials."""
+    parsed = urlsplit(url)
+    return parsed.netloc.rsplit("@", 1)[-1] or parsed.path
 
 
 class Plugin(BasePlugin):
@@ -43,12 +50,16 @@ class Plugin(BasePlugin):
         super().__init__(app, **options)
 
     def setup(self, app: Application, *, name: str | None = None, **options) -> bool:
-        super().setup(app, name=name, **options)
+        if not super().setup(app, name=name, **options):
+            return False
 
         cfg = self.cfg
 
         if cfg.fake:
-            self.__client__ = create_fake_client(decode_responses=cfg.decode_responses)
+            self.__client__ = create_fake_client(
+                decode_responses=cfg.decode_responses,
+                db=cfg.db or 0,
+            )
             return True
 
         params = {
@@ -71,25 +82,34 @@ class Plugin(BasePlugin):
     @property
     def client(self) -> Redis:
         """Return a client instance."""
-        if self.__client__ is None:
+        client = self.__dict__.get("__client__")
+        if client is None:
             raise RuntimeError("Redis Plugin should be started")
 
-        return self.__client__
+        return client
 
     def __getattr__(self, name):
         """Proxy attribute to self connection."""
+        if name.startswith("__"):
+            raise AttributeError(name)
+
         if name in ("startup", "shutdown", "middleware"):
             return object.__getattribute__(self, name)
-        return getattr(self.client, name)
+
+        client = self.__dict__.get("__client__")
+        if client is None:
+            raise AttributeError(f"Redis Plugin should be started (no attribute {name!r})")
+
+        return getattr(client, name)
 
     async def startup(self):
         """Initialize a redis connection."""
-        self.app.logger.info("Connecting to Redis at %s", self.cfg.url)
+        self.app.logger.info("Connecting to Redis at %s", _address(self.cfg.url))
         await self.client.initialize()
 
     async def shutdown(self):
         """Close the redis pool."""
-        self.app.logger.info("Disconnecting from Redis at %s", self.cfg.url)
+        self.app.logger.info("Disconnecting from Redis at %s", _address(self.cfg.url))
         client = self.client
         await client.aclose()  # type: ignore[]
         await client.connection_pool.disconnect()
@@ -108,10 +128,9 @@ class Plugin(BasePlugin):
 
         return self.client.set(name, value, **options)
 
-    async def get(self, key, *, jsonify: bool | None = None, **options):
+    async def get(self, key, *, jsonify: bool | None = None):
         """Decode the value."""
-        client = self.client
-        value = await client.get(key, **options)
+        value = await self.client.get(key)
 
         if value is not None and (self.cfg.jsonify if jsonify is None else jsonify):
             if isinstance(value, bytes):

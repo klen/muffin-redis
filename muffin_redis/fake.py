@@ -14,11 +14,11 @@ if TYPE_CHECKING:
     from collections.abc import AsyncGenerator
 
 
-def create_fake_client(*, decode_responses: bool = True):
+def create_fake_client(*, decode_responses: bool = True, db: int = 0):
     """Create a FakeRedis client instance."""
     from fakeredis.aioredis import FakeRedis
 
-    return FakeRedis(decode_responses=decode_responses)
+    return FakeRedis(decode_responses=decode_responses, db=db)
 
 
 @asynccontextmanager
@@ -32,7 +32,7 @@ async def fake_lock(  # noqa: PLR0913
     sleep: float = 0.1,
 ) -> AsyncGenerator[bool]:
     """Acquire and release a lock using SET NX + DEL (no Lua)."""
-    token = uuid.uuid4().hex.encode()
+    token = uuid.uuid4().hex
     timeout_ms = int(timeout * 1000) if timeout else None
 
     acquired = False
@@ -55,4 +55,6 @@ async def fake_lock(  # noqa: PLR0913
     finally:
         if acquired:
             with suppress(RedisError):
-                await client.delete(name)
+                # Redis may return str or bytes depending on decode_responses
+                if await client.get(name) in (token, token.encode()):
+                    await client.delete(name)

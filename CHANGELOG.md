@@ -13,12 +13,23 @@ and this project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.ht
 - `tox` environments `py311`-`py315` and `pypy311`.
 
 ### Changed
+- `get()` no longer accepts `**options`: `redis-py`'s `GET` takes only the key, so any option raised
+  `TypeError`.
 - Dev tooling aligned with the `muffin-rest` reference (dependency group, ruff ignore list,
   pre-commit hook versions, Makefile targets).
 - README references `redis.asyncio` instead of the archived `aioredis` project.
 - Tests are pinned to asyncio: `redis.asyncio` does not work under trio/curio.
 
 ### Fixed
+- `fake: true` lock no longer deletes a key that had already expired and been taken by another
+  worker (it used to release a lock it no longer owned).
+- `startup`/`shutdown` no longer write the Redis password into the log when credentials come from
+  the URL.
+- `Plugin.__getattr__` now raises `AttributeError` for missing or dunder attributes instead of
+  `RecursionError`/`RuntimeError`, so `getattr(plugin, name, default)`, `hasattr()` and `copy.copy()`
+  work as expected.
+- A disabled plugin no longer builds a Redis client, and `setup()` returns `False` for it.
+- `db` is honoured in `fake: true` mode instead of silently using database 0.
 - README documented a non-existent `address` option, the wrong extra name (`fakeredis` instead of
   `fake`), `expire=` instead of the supported `ex=` argument and the wrong `poolsize=0` semantics.
 - `make clean` removed `__pycache__` from an undefined `$(MODULE)` directory.

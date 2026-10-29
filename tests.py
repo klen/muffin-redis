@@ -4,8 +4,10 @@ import time
 import muffin
 import pytest
 from asgi_tools._compat import aio_sleep, aio_spawn
+from redis.asyncio import BlockingConnectionPool, ConnectionPool
 
 from muffin_redis import Plugin
+from muffin_redis.plugin import _address
 
 
 # Pin the suite to asyncio: `redis.asyncio` cannot run under trio/curio
@@ -45,15 +47,22 @@ async def test_muffin_redis(redis):
 
 
 async def test_pool(app):
-    async def block_conn(client):
-        await asyncio.sleep(1e-2)
-        return await client.ping()
+    pool = Plugin(app, poolsize=2).client.connection_pool
+    assert isinstance(pool, BlockingConnectionPool)
+    assert pool.max_connections == 2
+    assert pool.timeout == 20
 
-    redis = Plugin(app, poolsize=2, fake=True)
+    pool = Plugin(app, poolsize=0, blocking=False, timeout=5).client.connection_pool
+    assert isinstance(pool, ConnectionPool)
+    assert not isinstance(pool, BlockingConnectionPool)
+    assert pool.max_connections == 100
 
-    async with redis:
-        res = await asyncio.gather(block_conn(redis), block_conn(redis), block_conn(redis))
-        assert len(res) == 3
+
+async def test_disabled(app):
+    redis = Plugin(app, fake=True, disabled=True)
+    assert "redis" not in app.plugins
+    with pytest.raises(RuntimeError):
+        redis.client.ping()
 
 
 async def test_jsonnify(redis):
@@ -104,6 +113,16 @@ async def test_lock_blocking_timeout(redis):
         assert acquired is True
 
 
+async def test_fake_lock_ownership(redis):
+    """An expired lock must not delete the key another worker acquired."""
+    async with redis.lock("owned", timeout=0.1, blocking=False) as acquired:
+        assert acquired is True
+        await asyncio.sleep(0.2)  # our own lock has expired by now
+        await redis.set("owned", "someone-else", px=5000)
+
+    assert await redis.get("owned") == "someone-else"
+
+
 async def test_muffin_redis_pubsub(redis):
     async def reader(channel_name: str):
         async def callback(channel):
@@ -125,3 +144,9 @@ async def test_muffin_redis_pubsub(redis):
         await aio_sleep(0.1)
 
     assert task.result() == "test"
+
+
+def test_log_address_hides_password():
+    assert _address("redis://:secret@cache:6379/0") == "cache:6379"
+    assert _address("redis://user:p@ss@cache:6379/0") == "cache:6379"
+    assert _address("unix:///var/run/redis.sock") == "/var/run/redis.sock"

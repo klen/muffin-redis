@@ -83,6 +83,9 @@ async def some_method(request):
 | `timeout`          | `20`                  | Seconds to wait for a free connection (blocking pool only)   |
 | `fake`             | `False`               | Use [fakeredis](https://github.com/cunla/fakeredis) instead of a real Redis server |
 
+A db in the URL path (`redis://localhost/2`) wins over the `db` option. With `fake: true` the
+`url`, `password` and `poolsize` options are ignored (the server is local); `db` is kept.
+
 ## API
 
 ### `client`
@@ -97,7 +100,7 @@ Coroutine storing `value` under `name` and returning the client's result (`True`
 command, e.g. `ex=60` (expire in seconds), `px=...`, `nx=True`, `xx=True`. Note that the keyword is
 `ex`, not `expire`.
 
-### `get(key, *, jsonify=None, **options)`
+### `get(key, *, jsonify=None)`
 
 Coroutine returning the stored value, or `None` when the key does not exist. With `jsonify` enabled
 the value (a `str` because `decode_responses` defaults to `True`) is parsed as JSON; values that are
@@ -106,7 +109,8 @@ not valid JSON are returned unchanged.
 ### `lock(name, *, timeout=30, blocking=True, blocking_timeout=None, sleep=0.1)`
 
 Async context manager yielding `True` when the lock was acquired and `False` otherwise. The lock is
-released on a normal or exceptional exit (and only if it was acquired).
+released on a normal or exceptional exit, and only if it is still held by us (an expired lock is
+left alone).
 
 - `timeout` — lock lifetime in seconds; the lock expires automatically, `None` disables expiry.
 - `blocking` — wait for a busy lock instead of returning `False` immediately.
