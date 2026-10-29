@@ -1,6 +1,6 @@
 [project]
 name = "muffin-redis"
-version = "4.0.2"
+version = "4.1.0"
 description = "Redis support for Muffin framework."
 authors = [{ name = "Kirill Klenov", email = "horneds@gmail.com" }]
 requires-python = ">=3.11,<4"
@@ -104,7 +104,7 @@ ignore = [
 ]
 
 [tool.bumpversion]
-current_version = "4.0.2"
+current_version = "4.1.0"
 commit = false
 tag = false
 
