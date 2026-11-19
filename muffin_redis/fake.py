@@ -8,13 +8,15 @@ import uuid
 from contextlib import asynccontextmanager, suppress
 from typing import TYPE_CHECKING
 
-from redis.asyncio import RedisError
+from redis.asyncio import Redis, RedisError
 
 if TYPE_CHECKING:
     from collections.abc import AsyncGenerator
 
+    from redis.typing import KeyT
 
-def create_fake_client(*, decode_responses: bool = True, db: int = 0):
+
+def create_fake_client(*, decode_responses: bool = True, db: int = 0) -> Redis:
     """Create a FakeRedis client instance."""
     from fakeredis.aioredis import FakeRedis
 
@@ -23,8 +25,8 @@ def create_fake_client(*, decode_responses: bool = True, db: int = 0):
 
 @asynccontextmanager
 async def fake_lock(  # noqa: PLR0913
-    client,
-    name,
+    client: Redis,
+    name: KeyT,
     *,
     timeout: float | None = 30,
     blocking: bool = True,
@@ -36,7 +38,7 @@ async def fake_lock(  # noqa: PLR0913
     timeout_ms = int(timeout * 1000) if timeout else None
 
     acquired = False
-    deadline = None
+    deadline: float | None = None
     if blocking and blocking_timeout is not None:
         deadline = time.monotonic() + blocking_timeout
 

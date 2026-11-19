@@ -7,6 +7,10 @@ and this project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.ht
 
 ## [Unreleased]
 
+### Changed
+- Annotated `setup`, `get`, `set`, `__getattr__`, `startup`, `shutdown` and the fake-mode
+  helpers (`create_fake_client`, `fake_lock`).
+
 ### Added
 - Python 3.15 support (classifier, CI matrix, tox environments).
 - README section documenting the public API: `client`, `set`, `get`, `lock` and attribute proxying.
